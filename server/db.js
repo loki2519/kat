@@ -38,7 +38,12 @@ function saveDb() {
   try {
     fs.writeFileSync(dbFilePath, JSON.stringify(memoryDb, null, 2), 'utf-8');
   } catch (e) {
-    console.error('Error saving KAT DB:', e);
+    try {
+      const tmpPath = path.join('/tmp', 'kat_database.json');
+      fs.writeFileSync(tmpPath, JSON.stringify(memoryDb, null, 2), 'utf-8');
+    } catch (tmpErr) {
+      console.warn('DB in-memory fallback active (read-only filesystem environment):', tmpErr.message);
+    }
   }
 }
 
