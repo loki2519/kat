@@ -1,0 +1,129 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-kat-deep: #0B3B82;
+    --color-kat-primary: #1769D2;
+    --color-kat-bright: #2D8CFF;
+    --color-kat-soft: #EAF3FF;
+    --color-kat-verylight: #F4F8FF;
+    --color-kat-white: #FFFFFF;
+    --color-kat-offwhite: #FAFCFF;
+    --color-kat-navy: #081B33;
+    --color-kat-text: #152238;
+    --color-kat-muted: #64748B;
+    --color-kat-border: #DCE8F7;
+    --color-kat-success: #16A34A;
+  }
+
+  body {
+    background-color: var(--color-kat-offwhite);
+    color: var(--color-kat-text);
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+    overflow-x: hidden;
+  }
+}
+
+/* Custom Utilities & Animations */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(220, 232, 247, 0.7);
+}
+
+.glass-panel-navy {
+  background: rgba(8, 27, 51, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(45, 140, 255, 0.2);
+}
+
+.blue-gradient-text {
+  background: linear-gradient(135deg, #0B3B82 0%, #1769D2 50%, #2D8CFF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.bright-gradient-text {
+  background: linear-gradient(135deg, #2D8CFF 0%, #60A5FA 50%, #EAF3FF 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.hero-gradient-bg {
+  background: radial-gradient(circle at 70% 30%, rgba(45, 140, 255, 0.08) 0%, rgba(11, 59, 130, 0.03) 50%, transparent 100%);
+}
+
+.kat-card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.kat-card-hover:hover {
+  transform: translateY(-4px);
+  border-color: #1769D2;
+  box-shadow: 0 12px 30px -4px rgba(23, 105, 210, 0.15);
+}
+
+/* Node animation background grid */
+.tech-grid-pattern {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(220, 232, 247, 0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(220, 232, 247, 0.4) 1px, transparent 1px);
+}
+
+/* Reduced motion accessibility */
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ═══════════════════════════════════════════════════
+   PRINT STYLES — Only show the payment receipt
+   ═══════════════════════════════════════════════════ */
+@media print {
+  /* Hide the entire page body */
+  body > * {
+    display: none !important;
+  }
+
+  /* Show only the printable receipt content */
+  #printable-receipt,
+  #printable-receipt * {
+    display: revert !important;
+    visibility: visible !important;
+  }
+
+  /* Position it at top of the printed page */
+  #printable-receipt {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    background: white !important;
+    padding: 24px !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+
+  /* Hide action buttons inside the receipt during print */
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Force single page */
+  @page {
+    size: A4;
+    margin: 16mm;
+  }
+}

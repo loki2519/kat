@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 540 120" fill="none">
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--   CAT EMBLEM (left icon)               -->
+  <!-- ═══════════════════════════════════════ -->
+  <g transform="translate(8, 6)">
+
+    <!-- Outer circle -->
+    <circle cx="54" cy="56" r="50" stroke="black" stroke-width="2" fill="none"/>
+
+    <!-- Crown sitting atop the circle -->
+    <g transform="translate(54, 4)">
+      <!-- Crown base -->
+      <rect x="-18" y="2" width="36" height="7" rx="1.5" fill="black"/>
+      <!-- Left spike -->
+      <polygon points="-18,2 -12,-12 -5,2" fill="black"/>
+      <!-- Center spike (tallest) -->
+      <polygon points="-5,2 0,-19 5,2" fill="black"/>
+      <!-- Right spike -->
+      <polygon points="5,2 12,-12 18,2" fill="black"/>
+      <!-- Crown Jewels -->
+      <circle cx="-12" cy="-14" r="1.8" fill="black"/>
+      <circle cx="0" cy="-21" r="2.2" fill="black"/>
+      <circle cx="12" cy="-14" r="1.8" fill="black"/>
+    </g>
+
+    <!-- Star sparkle on top right of circle -->
+    <path d="M 98,22 Q 98,27 103,27 Q 98,27 98,32 Q 98,27 93,27 Q 98,27 98,22" fill="black"/>
+
+    <!-- ── Cat silhouette: sitting, grooming right front paw ── -->
+
+    <!-- Main body (sitting) -->
+    <ellipse cx="58" cy="70" rx="24" ry="28" fill="black"/>
+
+    <!-- Neck connector -->
+    <ellipse cx="50" cy="52" rx="12" ry="9" fill="black"/>
+
+    <!-- Head (slightly turned left/down) -->
+    <circle cx="44" cy="37" r="20" fill="black"/>
+
+    <!-- Left ear -->
+    <polygon points="27,23 20,5 37,20" fill="black"/>
+    <!-- Right ear -->
+    <polygon points="58,23 66,7 64,25" fill="black"/>
+
+    <!-- Face: white eye highlight -->
+    <ellipse cx="38" cy="34" rx="4.2" ry="4.8" fill="white"/>
+    <ellipse cx="52" cy="34" rx="3.8" ry="4.2" fill="white"/>
+    <!-- Pupils -->
+    <ellipse cx="39" cy="35" rx="2.4" ry="3.2" fill="black"/>
+    <ellipse cx="53" cy="35" rx="2.2" ry="3" fill="black"/>
+    <!-- Eye glints -->
+    <circle cx="40.5" cy="33" r="1" fill="white"/>
+    <circle cx="54" cy="33" r="0.9" fill="white"/>
+
+    <!-- Nose -->
+    <ellipse cx="45" cy="42" rx="3" ry="2" fill="black"/>
+
+    <!-- Whiskers -->
+    <line x1="42" y1="44" x2="18" y2="41" stroke="black" stroke-width="1" stroke-linecap="round"/>
+    <line x1="42" y1="46" x2="18" y2="48" stroke="black" stroke-width="1" stroke-linecap="round"/>
+    <line x1="48" y1="44" x2="70" y2="41" stroke="black" stroke-width="1" stroke-linecap="round"/>
+    <line x1="48" y1="46" x2="70" y2="48" stroke="black" stroke-width="1" stroke-linecap="round"/>
+
+    <!-- Raised right front paw (grooming/licking) -->
+    <ellipse cx="30" cy="53" rx="9" ry="13" fill="black" transform="rotate(-35 30 53)"/>
+    <ellipse cx="25" cy="45" rx="7" ry="9" fill="black" transform="rotate(-15 25 45)"/>
+    <ellipse cx="21" cy="39" rx="5" ry="3.5" fill="black" transform="rotate(15 21 39)"/>
+
+    <!-- Left front paw (resting) -->
+    <ellipse cx="46" cy="88" rx="7.5" ry="5" fill="black"/>
+
+    <!-- Tail curling around the right side and bottom -->
+    <path d="M 78,74 Q 94,88 85,98 Q 74,106 62,98 Q 54,92 58,88"
+          stroke="black" stroke-width="8.5" fill="none"
+          stroke-linecap="round" stroke-linejoin="round"/>
+
+  </g>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--   KAT WORDMARK                          -->
+  <!-- ═══════════════════════════════════════ -->
+  <text
+    x="132" y="68"
+    font-family="'Palatino Linotype','Palatino','Book Antiqua','Garamond','Times New Roman',serif"
+    font-size="62"
+    font-weight="800"
+    fill="black"
+    letter-spacing="14">K A T</text>
+
+  <!-- ═══════════════════════════════════════ -->
+  <!--   SLOGAN (below KAT, larger & clear)    -->
+  <!-- ═══════════════════════════════════════ -->
+  <text
+    x="134" y="96"
+    font-family="'Palatino Linotype','Palatino','Book Antiqua','Garamond','Times New Roman',serif"
+    font-size="12"
+    font-weight="700"
+    fill="black"
+    letter-spacing="3.8">CREATE. DESIGN. DELIVER. ELEVATE.</text>
+
+</svg>

@@ -1,0 +1,183 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "username": "admin",
+      "email": "admin@katdigital.com",
+      "password_hash": "$2b$10$RpQxMf0foG4Y3s31rss8jejQRG3huEarJbu/wr7QJegJDL.meLOZa",
+      "role": "admin",
+      "created_at": "2026-08-18T00:47:04.579Z"
+    }
+  ],
+  "services": [
+    {
+      "id": 1,
+      "slug": "wishing-gifting",
+      "title": "Wishing & Gifting Websites",
+      "starting_price": 599,
+      "price_display": "Starting at ₹599+",
+      "short_description": "Interactive digital experiences designed to turn birthdays, anniversaries and special moments into memorable online gifts.",
+      "deliverables": [
+        "Custom Interactive Animations",
+        "Music & Photo Slideshows",
+        "Personalized Wishes & QR Code",
+        "Mobile & Desktop Responsive",
+        "1-Year Fast Cloud Hosting"
+      ]
+    },
+    {
+      "id": 2,
+      "slug": "college-projects",
+      "title": "Final Year College Projects",
+      "starting_price": 4999,
+      "price_display": "Starting at ₹4,999+",
+      "short_description": "Complete academic project solutions with modern interfaces, documentation support and practical technology implementation.",
+      "deliverables": [
+        "Full Source Code & Architecture",
+        "Comprehensive Project Report/Doc",
+        "Database & Backend API Implementation",
+        "PPT & Viva Guidance Support",
+        "1-on-1 Code Walkthrough"
+      ]
+    },
+    {
+      "id": 3,
+      "slug": "poster-design",
+      "title": "Poster Design",
+      "starting_price": 99,
+      "price_display": "Starting at ₹99+",
+      "short_description": "Professional digital posters for events, businesses, celebrations, promotions and social media campaigns.",
+      "deliverables": [
+        "High-Resolution 4K Graphics",
+        "Print-Ready PDF & PNG Formats",
+        "Social Media Sized Variants",
+        "Modern MNC Typography",
+        "Fast 24-Hour Delivery"
+      ]
+    },
+    {
+      "id": 4,
+      "slug": "marathon-sports",
+      "title": "Marathon / Sports Websites",
+      "starting_price": 6999,
+      "price_display": "Starting at ₹6,999+",
+      "short_description": "Complete event platforms with registration, payments, participant management and digital event experiences.",
+      "deliverables": [
+        "Runner Registration System",
+        "Payment Gateway Integration",
+        "Bib & Category Management",
+        "Live Leaderboards & Results",
+        "Sponsor Showcase Banner"
+      ]
+    },
+    {
+      "id": 5,
+      "slug": "promo-videos",
+      "title": "Promotional Video Making",
+      "starting_price": 399,
+      "price_display": "Starting at ₹399+",
+      "short_description": "Short-form promotional videos designed to capture attention and communicate your event, product or brand.",
+      "deliverables": [
+        "Full HD / 4K Motion Video",
+        "Engaging Voiceover & SFX",
+        "Brand Colors & Animated Text",
+        "Reels / Shorts 9:16 & 16:9 Ratios",
+        "Licensed Background Audio"
+      ]
+    },
+    {
+      "id": 6,
+      "slug": "custom-websites",
+      "title": "Custom Websites",
+      "starting_price": 0,
+      "price_display": "Custom Pricing",
+      "short_description": "Tailored websites and digital products designed around your specific business requirements.",
+      "deliverables": [
+        "Enterprise Architecture & UI/UX",
+        "Custom Backend API & Database",
+        "Admin Management Portal",
+        "Payment & Analytics Integration",
+        "Ongoing Maintenance & SLA"
+      ]
+    }
+  ],
+  "customers": [
+    {
+      "id": 1,
+      "name": "Rohan Kumar",
+      "email": "rohan@example.com",
+      "phone": "9876543210",
+      "company": "",
+      "created_at": "2026-08-18T00:47:16.866Z"
+    },
+    {
+      "id": 2,
+      "name": "Lokesh reddy Maddi",
+      "email": "5221411006@gvpcdpgc.edu.in",
+      "phone": "6301399193",
+      "company": "",
+      "created_at": "2026-08-18T00:51:29.719Z"
+    },
+    {
+      "id": 3,
+      "name": "Lokesh reddy Maddi",
+      "email": "5221411006@gvpcdpgc.edu.in",
+      "phone": "6301399193",
+      "company": "",
+      "created_at": "2026-08-18T01:47:11.716Z"
+    },
+    {
+      "id": 4,
+      "name": "Lokesh reddy majji",
+      "email": "5221411006@gvpcdpgc.edu.in",
+      "phone": "6301399193",
+      "company": "",
+      "created_at": "2026-08-18T02:05:16.305Z"
+    },
+    {
+      "id": 5,
+      "name": "Test User",
+      "email": "test@example.com",
+      "phone": "9542166098",
+      "company": "",
+      "created_at": "2026-08-18T02:33:37.377Z"
+    },
+    {
+      "id": 6,
+      "name": "Test User",
+      "email": "test@example.com",
+      "phone": "9542166098",
+      "company": "",
+      "created_at": "2026-08-18T02:33:49.626Z"
+    },
+    {
+      "id": 7,
+      "name": "Test Customer",
+      "email": "test@example.com",
+      "phone": "9542166098",
+      "company": "",
+      "created_at": "2026-08-18T02:34:18.084Z"
+    },
+    {
+      "id": 8,
+      "name": "Razorpay Customer",
+      "email": "razorpay@example.com",
+      "phone": "9542166098",
+      "company": "",
+      "created_at": "2026-08-18T02:35:53.308Z"
+    },
+    {
+      "id": 9,
+      "name": "Lokesh reddy Maddi",
+      "email": "5221411006@gvpcdpgc.edu.in",
+      "phone": "6301399193",
+      "company": "",
+      "created_at": "2026-08-18T03:09:20.930Z"
+    }
+  ],
+  "quotes": [],
+  "payments": [],
+  "admin_notes": [],
+  "contact_submissions": [],
+  "reviews": []
+}
