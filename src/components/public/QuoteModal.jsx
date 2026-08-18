@@ -37,6 +37,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   // Official Payment Receipt Object State
   const [receiptData, setReceiptData] = useState(null);
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [darkLogoUrl, setDarkLogoUrl] = useState(logoSvg);
 
   const katUpiId = getUpiId();
   const katPayeeName = getPayeeName();
@@ -49,6 +50,38 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
       setActiveTab(initialTab);
     }
   }, [initialService, initialTab]);
+
+  // Convert light logo to solid dark navy (#081B33) Base64 Data URL for white receipt background
+  useEffect(() => {
+    const img = new Image();
+    img.crossOrigin = 'Anonymous';
+    img.onload = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.naturalWidth || 280;
+        canvas.height = img.naturalHeight || 80;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+
+        const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imgData.data;
+
+        // Transform light pixels to dark navy (#081B33)
+        for (let i = 0; i < data.length; i += 4) {
+          if (data[i + 3] > 10) {
+            data[i] = 8;       // R
+            data[i + 1] = 27;  // G
+            data[i + 2] = 51;  // B
+          }
+        }
+        ctx.putImageData(imgData, 0, 0);
+        setDarkLogoUrl(canvas.toDataURL('image/png'));
+      } catch (err) {
+        console.warn('Dark logo canvas conversion error:', err);
+      }
+    };
+    img.src = logoSvg;
+  }, []);
 
   if (!isOpen) return null;
 
@@ -302,25 +335,9 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   // ══════════════════════════════════════════════════════════════════════
   // PRINT RECEIPT (Isolated Hidden Iframe — EXACTLY 1 PAGE, Logo Guaranteed)
   // ══════════════════════════════════════════════════════════════════════
-  const handlePrintReceipt = async () => {
+  const handlePrintReceipt = () => {
     const receiptCard = document.getElementById('printable-receipt-card');
     if (!receiptCard) return;
-
-    // Convert logo image to base64 Data URL to guarantee render in print iframe
-    let logoDataUrl = logoSvg;
-    try {
-      const img = new Image();
-      img.src = logoSvg;
-      await new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 300); });
-      const c = document.createElement('canvas');
-      c.width = img.naturalWidth || 200;
-      c.height = img.naturalHeight || 60;
-      const ctx = c.getContext('2d');
-      ctx.drawImage(img, 0, 0);
-      logoDataUrl = c.toDataURL('image/png');
-    } catch (e) {
-      console.warn('Logo base64 conversion fallback:', e);
-    }
 
     // Create an isolated hidden iframe for printing (completely escapes modal overflow)
     const iframe = document.createElement('iframe');
@@ -338,14 +355,6 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
     const stylesHtml = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
       .map(style => style.outerHTML)
       .join('\n');
-
-    // Clone receipt HTML and swap logo src with embedded Data URL
-    const clonedReceipt = receiptCard.cloneNode(true);
-    const logoImgInClone = clonedReceipt.querySelector('img');
-    if (logoImgInClone) {
-      logoImgInClone.src = logoDataUrl;
-      logoImgInClone.removeAttribute('style');
-    }
 
     doc.open();
     doc.write(`
@@ -382,7 +391,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
         </head>
         <body>
           <div class="print-receipt-container">
-            ${clonedReceipt.outerHTML}
+            ${receiptCard.outerHTML}
           </div>
         </body>
       </html>
@@ -411,50 +420,14 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
     setError('');
 
     try {
-      // Pre-load and convert logo to Base64 Data URL to guarantee html2canvas includes logo image
-      let logoDataUrl = logoSvg;
-      try {
-        const img = new Image();
-        img.src = logoSvg;
-        await new Promise(r => { img.onload = r; img.onerror = r; setTimeout(r, 300); });
-        const c = document.createElement('canvas');
-        c.width = img.naturalWidth || 200;
-        c.height = img.naturalHeight || 60;
-        const ctx = c.getContext('2d');
-        ctx.drawImage(img, 0, 0);
-        logoDataUrl = c.toDataURL('image/png');
-      } catch (e) {
-        console.warn('Logo pre-conversion fallback:', e);
-      }
-
-      // Swap logo image src with base64 data URL temporarily on receipt card
-      const logoImg = receiptCard.querySelector('img');
-      const originalSrc = logoImg ? logoImg.src : null;
-      if (logoImg) {
-        logoImg.src = logoDataUrl;
-        logoImg.removeAttribute('style');
-      }
-
-      // Capture canvas of ONLY the receipt card element
+      // Capture canvas of ONLY the receipt card element (darkLogoUrl is already embedded)
       const canvas = await html2canvas(receiptCard, {
         scale: 2,
         useCORS: true,
         allowTaint: true,
         logging: false,
         backgroundColor: '#FFFFFF',
-        onclone: (clonedDoc) => {
-          const clonedImg = clonedDoc.querySelector('#printable-receipt-card img');
-          if (clonedImg) {
-            clonedImg.src = logoDataUrl;
-            clonedImg.style.filter = 'none';
-          }
-        }
       });
-
-      // Restore original logo src if modified
-      if (logoImg && originalSrc) {
-        logoImg.src = originalSrc;
-      }
 
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({
@@ -528,7 +501,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
               {/* Company Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-kat-border pb-6 gap-4">
                 <div className="flex items-center gap-3">
-                  <img src={logoSvg} alt="KAT Logo" className="h-14 w-auto object-contain" />
+                  <img src={darkLogoUrl || logoSvg} alt="KAT Logo" className="h-14 w-auto object-contain" />
                 </div>
                 <div className="text-left sm:text-right">
                   <span className="text-xs font-black text-emerald-600 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-1">
