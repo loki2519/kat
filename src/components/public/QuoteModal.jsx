@@ -218,9 +218,9 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   };
 
   // ══════════════════════════════════════════════════════════════════════
-  // 2 & 3. PHONEPE AND GOOGLE PAY UPI OPTIONS (Direct App Launch + Verification Pending)
+  // 2 & 3. PHONEPE AND GOOGLE PAY UPI OPTIONS (Standard NPCI Deep Linking + Verification Pending)
   // ══════════════════════════════════════════════════════════════════════
-  const handleUpiPayment = async (methodName, targetQuoteId, amount) => {
+  const handleUpiPayment = async (methodName, targetQuoteId, rawAmount) => {
     setPaymentProcessing(true);
     setError('');
 
@@ -239,31 +239,35 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
 
       const targetUpiId = data.upi_id || katUpiId;
       const targetPayee = data.payee_name || katPayeeName;
-      const txnRef = data.transaction_ref || `${targetQuoteId}-P${Date.now().toString().slice(-6)}`;
+      const rawTxnRef = data.transaction_ref || `${targetQuoteId}P${Date.now().toString().slice(-6)}`;
 
-      // Construct standard UPI deep link with fixed amount and unique transaction reference
-      const upiUrl = `upi://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tr=${encodeURIComponent(txnRef)}&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
+      // Format amount to exact 2 decimal places as required by NPCI specification (e.g. 599.00)
+      const formattedAmount = Number(rawAmount || data.amount || 0).toFixed(2);
+
+      // Clean transaction ref to alphanumeric string (max 35 chars) for NPCI compliance
+      const cleanTxnRef = rawTxnRef.replace(/[^a-zA-Z0-9]/g, '').slice(0, 35);
+      const cleanNote = `KAT Quote ${targetQuoteId.replace(/[^a-zA-Z0-9]/g, '')}`;
+
+      // Standard NPCI Universal UPI URL (compatible with PhonePe, GPay, Paytm, BHIM)
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${formattedAmount}&cu=INR&tr=${encodeURIComponent(cleanTxnRef)}&tn=${encodeURIComponent(cleanNote)}`;
 
       setUpiInitiated({
         method: methodName,
         upiId: targetUpiId,
         payeeName: targetPayee,
-        amount: amount,
+        amount: formattedAmount,
         quoteId: targetQuoteId,
-        transactionRef: txnRef,
+        transactionRef: cleanTxnRef,
         upiUrl: upiUrl,
         message: data.message,
       });
 
-      // Launch UPI app deep link on mobile devices
+      // Launch standard NPCI UPI link on mobile devices (avoids PhonePe custom scheme security blocks)
       if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-        if (methodName === 'PhonePe') {
-          window.location.href = `phonepe://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tr=${encodeURIComponent(txnRef)}&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
-          setTimeout(() => {
-            window.location.href = upiUrl;
-          }, 800);
-        } else if (methodName === 'Google Pay') {
-          window.location.href = `gpay://upi/pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tr=${encodeURIComponent(txnRef)}&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
+        if (methodName === 'PhonePe' && /Android/i.test(navigator.userAgent)) {
+          // Android PhonePe Intent fallback + standard upi:// fallback
+          const phonepeAndroidIntent = `intent://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${formattedAmount}&cu=INR&tr=${encodeURIComponent(cleanTxnRef)}&tn=${encodeURIComponent(cleanNote)}#Intent;scheme=upi;package=com.phonepe.app;end`;
+          window.location.href = phonepeAndroidIntent;
           setTimeout(() => {
             window.location.href = upiUrl;
           }, 800);
