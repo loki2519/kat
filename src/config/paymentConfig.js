@@ -1,7 +1,7 @@
 // Central Payment Configuration for KAT Digital Solutions
 export const PAYMENT_CONFIG = {
   UPI_ID: '6301399193-3@ybl',
-  PAYEE_NAME: 'KAT Digital Solutions',
+  PAYEE_NAME: 'maddi lokesh reddy',
   CURRENCY: 'INR',
 };
 
