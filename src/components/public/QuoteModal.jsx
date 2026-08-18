@@ -218,7 +218,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   };
 
   // ══════════════════════════════════════════════════════════════════════
-  // 2 & 3. PHONEPE AND GOOGLE PAY UPI OPTIONS (Clean NPCI Deep Link + Verification Pending)
+  // 2 & 3. PHONEPE AND GOOGLE PAY UPI OPTIONS (Diagnostic Compliant UPI Intent)
   // ══════════════════════════════════════════════════════════════════════
   const handleUpiPayment = async (methodName, targetQuoteId, rawAmount) => {
     setPaymentProcessing(true);
@@ -239,15 +239,36 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
 
       const targetUpiId = data.upi_id || katUpiId;
       const targetPayee = data.payee_name || katPayeeName;
-      const txnRef = data.transaction_ref || `${targetQuoteId}P${Date.now().toString().slice(-6)}`;
 
-      // Format amount to exact 2 decimal places as required by NPCI specification (e.g. 599.00)
+      // 1. Generate a FRESH, unique alphanumeric transaction reference (no hyphens, no special chars)
+      const now = new Date();
+      const timestamp = now.getFullYear().toString() +
+        String(now.getMonth() + 1).padStart(2, '0') +
+        String(now.getDate()).padStart(2, '0') +
+        String(now.getHours()).padStart(2, '0') +
+        String(now.getMinutes()).padStart(2, '0') +
+        String(now.getSeconds()).padStart(2, '0');
+      const randomSuffix = Math.floor(100 + Math.random() * 900);
+      const freshTxnRef = `KAT${timestamp}${randomSuffix}`;
+
+      // 2. Format amount to exact 2 decimal places (no currency symbols in am parameter)
       const formattedAmount = Number(rawAmount || data.amount || 0).toFixed(2);
-      const cleanNote = `Payment for KAT Quote ${targetQuoteId}`;
+      const cleanNote = `KAT Quote ${targetQuoteId.replace(/[^a-zA-Z0-9]/g, '')}`;
 
-      // Standard NPCI Universal UPI URL
-      // Note: Omit unverified 'tr' parameter for web-initiated links to avoid triggering PhonePe's anti-fraud security block
-      const upiUrl = `upi://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${formattedAmount}&cu=INR&tn=${encodeURIComponent(cleanNote)}`;
+      // 3. Construct exact standard upi://pay URI with all required NPCI parameters safely encoded
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${formattedAmount}&cu=INR&tr=${freshTxnRef}&tn=${encodeURIComponent(cleanNote)}`;
+
+      // 4. Log diagnostic information to browser development console
+      console.log('[KAT UPI DIAGNOSTIC] =====================================');
+      console.log('[KAT UPI DIAGNOSTIC] Target Method:', methodName);
+      console.log('[KAT UPI DIAGNOSTIC] Payee VPA (pa):', targetUpiId);
+      console.log('[KAT UPI DIAGNOSTIC] Payee Name (pn):', targetPayee);
+      console.log('[KAT UPI DIAGNOSTIC] Formatted Amount (am):', formattedAmount);
+      console.log('[KAT UPI DIAGNOSTIC] Currency (cu):', 'INR');
+      console.log('[KAT UPI DIAGNOSTIC] Fresh Txn Reference (tr):', freshTxnRef);
+      console.log('[KAT UPI DIAGNOSTIC] Transaction Note (tn):', cleanNote);
+      console.log('[KAT UPI DIAGNOSTIC] Generated UPI URI:', upiUrl);
+      console.log('[KAT UPI DIAGNOSTIC] =====================================');
 
       setUpiInitiated({
         method: methodName,
@@ -255,12 +276,12 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
         payeeName: targetPayee,
         amount: formattedAmount,
         quoteId: targetQuoteId,
-        transactionRef: txnRef,
+        transactionRef: freshTxnRef,
         upiUrl: upiUrl,
         message: data.message,
       });
 
-      // Launch standard NPCI UPI link on mobile devices
+      // 5. Launch standard upi://pay link on mobile devices
       if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
         window.location.href = upiUrl;
       }
@@ -869,6 +890,37 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                             <div className="text-[10px] text-amber-800 font-bold bg-amber-50 p-2.5 rounded-xl border border-amber-200">
                               ⚠️ Note: Verification Pending with KAT Admin. Receipt will be generated once payment is confirmed in bank records.
                             </div>
+
+                            {/* DEV-ONLY DIAGNOSTIC PANEL */}
+                            {import.meta.env.DEV && (
+                              <div className="p-3.5 rounded-xl bg-slate-900 text-slate-100 text-[10px] font-mono space-y-2 border border-slate-700">
+                                <div className="font-bold text-amber-400 flex items-center justify-between">
+                                  <span>🔧 DEV DIAGNOSTIC — GENERATED UPI URI:</span>
+                                </div>
+                                <div className="break-all p-2 bg-slate-950 rounded text-[9px] select-all text-emerald-400">
+                                  {upiInitiated.upiUrl}
+                                </div>
+                                <div className="flex gap-2 pt-1">
+                                  <button
+                                    type="button"
+                                    onClick={() => window.location.href = upiInitiated.upiUrl}
+                                    className="px-3 py-1 bg-emerald-600 text-white rounded font-bold text-[10px] hover:bg-emerald-500 transition-colors"
+                                  >
+                                    TEST UPI INTENT
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(upiInitiated.upiUrl);
+                                      alert('Diagnostic UPI URI copied to clipboard!');
+                                    }}
+                                    className="px-3 py-1 bg-slate-700 text-slate-200 rounded font-bold text-[10px] hover:bg-slate-600 transition-colors"
+                                  >
+                                    COPY DIAGNOSTIC URI
+                                  </button>
+                                </div>
+                              </div>
+                            )}
                           </div>
                         )}
                       </div>
