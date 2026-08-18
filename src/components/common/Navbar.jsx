@@ -130,6 +130,23 @@ export default function Navbar({ onOpenQuote }) {
         </div>
       </div>
 
+      {/* Ticker Banner — Continuous Scrolling Text Below Header */}
+      <div className="w-full bg-gradient-to-r from-kat-navy via-indigo-950 to-kat-navy text-white text-[11px] font-extrabold py-1.5 overflow-hidden border-t border-kat-bright/20 shadow-inner flex items-center">
+        <div className="animate-marquee font-mono uppercase tracking-wider flex items-center gap-6">
+          <span className="text-amber-300 flex items-center gap-1.5">
+            <span>⚡</span> CURRENTLY THE RAZOR PAY IS UNDER WAY DEVELOPMENT PROCESS. PLEASE PROCEED THE PAYMENTS WITH THE PHONEPAY AND GOOGLE PAY
+          </span>
+          <span className="text-kat-bright font-black">✦</span>
+          <span className="text-amber-300 flex items-center gap-1.5">
+            <span>⚡</span> CURRENTLY THE RAZOR PAY IS UNDER WAY DEVELOPMENT PROCESS. PLEASE PROCEED THE PAYMENTS WITH THE PHONEPAY AND GOOGLE PAY
+          </span>
+          <span className="text-kat-bright font-black">✦</span>
+          <span className="text-amber-300 flex items-center gap-1.5">
+            <span>⚡</span> CURRENTLY THE RAZOR PAY IS UNDER WAY DEVELOPMENT PROCESS. PLEASE PROCEED THE PAYMENTS WITH THE PHONEPAY AND GOOGLE PAY
+          </span>
+        </div>
+      </div>
+
       {/* Mobile Menu Dropdown Modal */}
       {mobileMenuOpen && (
         <div className="lg:hidden fixed inset-x-0 top-full bg-white border-b border-kat-border shadow-2xl p-5 max-h-[calc(100vh-85px)] overflow-y-auto transition-all duration-300 animate-in slide-in-from-top-2">

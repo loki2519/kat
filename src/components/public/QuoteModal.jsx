@@ -348,7 +348,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
               {/* Company Header */}
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between border-b border-kat-border pb-6 gap-4">
                 <div className="flex items-center gap-3">
-                  <img src={logoSvg} alt="KAT Logo" className="h-12 w-auto object-contain" />
+                  <img src={logoSvg} alt="KAT Logo" className="h-14 w-auto object-contain" style={{ filter: 'invert(1)' }} />
                 </div>
                 <div className="text-left sm:text-right">
                   <span className="text-xs font-black text-emerald-600 bg-emerald-100 border border-emerald-300 px-3 py-1 rounded-full uppercase tracking-wider inline-block mb-1">
