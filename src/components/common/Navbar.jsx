@@ -130,21 +130,11 @@ export default function Navbar({ onOpenQuote }) {
         </div>
       </div>
 
-      {/* Ticker Banner — Continuous Scrolling Text Below Header */}
-      <div className="w-full bg-gradient-to-r from-kat-navy via-indigo-950 to-kat-navy text-white text-[11px] font-extrabold py-1.5 overflow-hidden border-t border-kat-bright/20 shadow-inner flex items-center">
-        <div className="animate-marquee font-mono uppercase tracking-wider flex items-center gap-6">
-          <span className="text-amber-300 flex items-center gap-1.5">
-            <span>⚡</span> CURRENTLY THE RAZOR PAY IS UNDER WAY DEVELOPMENT PROCESS. PLEASE PROCEED THE PAYMENTS WITH THE PHONEPAY AND GOOGLE PAY
-          </span>
-          <span className="text-kat-bright font-black">✦</span>
-          <span className="text-amber-300 flex items-center gap-1.5">
-            <span>⚡</span> CURRENTLY THE RAZOR PAY IS UNDER WAY DEVELOPMENT PROCESS. PLEASE PROCEED THE PAYMENTS WITH THE PHONEPAY AND GOOGLE PAY
-          </span>
-          <span className="text-kat-bright font-black">✦</span>
-          <span className="text-amber-300 flex items-center gap-1.5">
-            <span>⚡</span> CURRENTLY THE RAZOR PAY IS UNDER WAY DEVELOPMENT PROCESS. PLEASE PROCEED THE PAYMENTS WITH THE PHONEPAY AND GOOGLE PAY
-          </span>
-        </div>
+      {/* Ticker Banner — Single continuous scrolling line below header */}
+      <div className="w-full bg-gradient-to-r from-kat-navy via-indigo-950 to-kat-navy text-amber-300 text-[11px] font-extrabold py-1.5 overflow-hidden border-t border-white/10">
+        <span className="animate-marquee uppercase tracking-widest font-mono">
+          ⚡&nbsp;&nbsp;CURRENTLY THE RAZORPAY IS UNDER DEVELOPMENT PROCESS. PLEASE PROCEED PAYMENTS WITH PHONEPE AND GOOGLE PAY&nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp;⚡&nbsp;&nbsp;CURRENTLY THE RAZORPAY IS UNDER DEVELOPMENT PROCESS. PLEASE PROCEED PAYMENTS WITH PHONEPE AND GOOGLE PAY&nbsp;&nbsp;&nbsp;✦&nbsp;&nbsp;&nbsp;⚡&nbsp;&nbsp;CURRENTLY THE RAZORPAY IS UNDER DEVELOPMENT PROCESS. PLEASE PROCEED PAYMENTS WITH PHONEPE AND GOOGLE PAY
+        </span>
       </div>
 
       {/* Mobile Menu Dropdown Modal */}
