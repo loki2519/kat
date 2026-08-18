@@ -9,6 +9,7 @@ import webhookRoutes from '../server/routes/webhooks.js';
 import analyticsRoutes from '../server/routes/analytics.js';
 import contactRoutes from '../server/routes/contact.js';
 import reviewRoutes from '../server/routes/reviews.js';
+import newsRoutes from '../server/routes/news.js';
 
 dotenv.config();
 
@@ -37,5 +38,6 @@ app.use('/api/webhooks', webhookRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/news', newsRoutes);
 
 export default app;
