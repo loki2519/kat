@@ -2,6 +2,7 @@ import express from 'express';
 import db from '../db.js';
 import { createRazorpayOrder, verifyPaymentSignature, verifyWebhookSignature } from '../utils/razorpay.js';
 import { authenticateAdmin } from '../middleware/auth.js';
+import { getBackendUpiId, getBackendPayeeName } from '../config/paymentConfig.js';
 
 const router = express.Router();
 
@@ -202,15 +203,16 @@ router.post('/initiate-upi', (req, res) => {
     return res.status(400).json({ error: 'This quotation has already been paid and verified.' });
   }
 
-  const upiId = process.env.VITE_KAT_UPI_ID || process.env.KAT_UPI_ID || '6301399193-3@ybl';
-  const payeeName = process.env.VITE_KAT_PAYEE_NAME || process.env.KAT_PAYEE_NAME || 'KAT Digital Solutions';
+  const upiId = getBackendUpiId();
+  const payeeName = getBackendPayeeName();
   const validMethod = ['PhonePe', 'Google Pay', 'UPI'].includes(payment_method) ? payment_method : 'PhonePe';
+  const uniqueTxnRef = transaction_ref || `${quote.quote_id}-P${Date.now().toString().slice(-6)}`;
 
   // Save payment record in DB with PENDING status (Not PAID until verified!)
   const payment = db.createPayment({
     quote_id: quote.quote_id,
-    order_id: `upi_${validMethod.toLowerCase().replace(/\s+/g, '')}_${Date.now()}`,
-    payment_id: transaction_ref ? `ref_${transaction_ref}` : null,
+    order_id: uniqueTxnRef,
+    payment_id: null, // Unverified initially
     payment_method: validMethod,
     customer_id: quote.customer_id,
     customer_name: quote.customer_name,
@@ -220,7 +222,7 @@ router.post('/initiate-upi', (req, res) => {
     amount: quote.quoted_amount,
     currency: 'INR',
     status: 'PENDING', // Verification Pending
-    signature: transaction_ref || null,
+    signature: uniqueTxnRef,
   });
 
   db.updateQuote(quote.quote_id, {
@@ -228,13 +230,14 @@ router.post('/initiate-upi', (req, res) => {
     payment_status: 'PENDING',
   });
 
-  db.addAdminNote(quote.quote_id, `UPI payment initiated via ${validMethod}. Verification pending.`, 'System');
+  db.addAdminNote(quote.quote_id, `UPI payment initiated via ${validMethod} (Ref: ${uniqueTxnRef}). Verification pending.`, 'System');
 
   return res.json({
     success: true,
-    message: `Payment initiated via ${validMethod}. Verification pending.`,
+    message: `Payment initiated via ${validMethod}. Verification pending with KAT Admin.`,
     quote_id: quote.quote_id,
     payment_method: validMethod,
+    transaction_ref: uniqueTxnRef,
     status: 'PENDING',
     upi_id: upiId,
     payee_name: payeeName,

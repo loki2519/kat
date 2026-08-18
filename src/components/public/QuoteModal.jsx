@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, CheckCircle2, Copy, CreditCard, Clock, Sparkles, ShieldCheck, Printer, AlertCircle } from 'lucide-react';
+import { X, Send, CheckCircle2, Copy, CreditCard, Clock, Sparkles, ShieldCheck, Printer, AlertCircle, QrCode } from 'lucide-react';
 import logoSvg from '../../assets/kat-logo.png';
+import { getUpiId, getPayeeName } from '../../config/paymentConfig';
 
 export default function QuoteModal({ isOpen, onClose, initialService = '', initialTab = 'request' }) {
   const [activeTab, setActiveTab] = useState(initialTab);
@@ -34,8 +35,8 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   // Official Payment Receipt Object State
   const [receiptData, setReceiptData] = useState(null);
 
-  const katUpiId = import.meta.env.VITE_KAT_UPI_ID || '6301399193-3@ybl';
-  const katPayeeName = import.meta.env.VITE_KAT_PAYEE_NAME || 'KAT Digital Solutions';
+  const katUpiId = getUpiId();
+  const katPayeeName = getPayeeName();
 
   useEffect(() => {
     if (initialService) {
@@ -202,6 +203,10 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
 
       const targetUpiId = data.upi_id || katUpiId;
       const targetPayee = data.payee_name || katPayeeName;
+      const txnRef = data.transaction_ref || `${targetQuoteId}-P${Date.now().toString().slice(-6)}`;
+
+      // Construct standard UPI deep link with fixed amount and unique transaction reference
+      const upiUrl = `upi://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tr=${encodeURIComponent(txnRef)}&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
 
       setUpiInitiated({
         method: methodName,
@@ -209,24 +214,23 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
         payeeName: targetPayee,
         amount: amount,
         quoteId: targetQuoteId,
+        transactionRef: txnRef,
+        upiUrl: upiUrl,
         message: data.message,
       });
-
-      // Construct standard UPI deep link with fixed amount
-      const upiUrl = `upi://pay?pa=${targetUpiId}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
 
       // Launch UPI app deep link on mobile devices
       if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
         if (methodName === 'PhonePe') {
-          window.location.href = `phonepe://pay?pa=${targetUpiId}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
+          window.location.href = `phonepe://pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tr=${encodeURIComponent(txnRef)}&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
           setTimeout(() => {
             window.location.href = upiUrl;
-          }, 1000);
+          }, 800);
         } else if (methodName === 'Google Pay') {
-          window.location.href = `gpay://upi/pay?pa=${targetUpiId}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
+          window.location.href = `gpay://upi/pay?pa=${encodeURIComponent(targetUpiId)}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tr=${encodeURIComponent(txnRef)}&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
           setTimeout(() => {
             window.location.href = upiUrl;
-          }, 1000);
+          }, 800);
         } else {
           window.location.href = upiUrl;
         }
@@ -653,31 +657,51 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                         </button>
 
                         {upiInitiated && upiInitiated.method === 'PhonePe' && (
-                          <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 space-y-2 text-xs text-purple-900 animate-in fade-in">
-                            <div className="font-extrabold flex items-center gap-1.5 text-purple-950">
+                          <div className="p-5 rounded-2xl bg-purple-50 border border-purple-200 space-y-4 text-xs text-purple-900 animate-in fade-in">
+                            <div className="font-extrabold flex items-center gap-2 text-purple-950 text-sm">
                               <Clock className="w-4 h-4 text-purple-700" />
                               <span>Payment Initiated — Verification Pending</span>
                             </div>
-                            <p className="text-[11px] text-purple-800 leading-relaxed">
-                              If PhonePe did not open automatically, pay using our official KAT Merchant UPI ID below:
-                            </p>
-                            <div className="p-3 bg-white rounded-xl border border-purple-200 flex items-center justify-between font-mono font-bold">
-                              <span>{upiInitiated.upiId}</span>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(upiInitiated.upiId);
-                                  setCopiedUpi(true);
-                                  setTimeout(() => setCopiedUpi(false), 2000);
-                                }}
-                                className="px-3 py-1 bg-purple-100 text-purple-900 rounded-lg text-[10px] hover:bg-purple-200 font-bold"
-                              >
-                                {copiedUpi ? 'COPIED!' : 'COPY UPI ID'}
-                              </button>
+                            
+                            {/* QR Code and Desktop Transfer Information */}
+                            <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-purple-200 shadow-sm">
+                              <div className="bg-white p-2 rounded-xl border border-purple-200 shadow-sm flex-shrink-0">
+                                <img
+                                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiInitiated.upiUrl)}`}
+                                  alt="PhonePe Payment QR Code"
+                                  className="w-32 h-32 object-contain"
+                                />
+                              </div>
+                              <div className="space-y-2 flex-1 text-center sm:text-left">
+                                <div className="text-[11px] font-bold text-purple-950">
+                                  📱 Mobile App / QR Scan Instructions:
+                                </div>
+                                <p className="text-[10px] text-purple-800 leading-relaxed">
+                                  Open <strong>PhonePe</strong> on your phone and scan this QR code, or use our official payee UPI ID below:
+                                </p>
+                                <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 flex items-center justify-between font-mono font-bold text-xs">
+                                  <span className="text-purple-950">{upiInitiated.upiId}</span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(upiInitiated.upiId);
+                                      setCopiedUpi(true);
+                                      setTimeout(() => setCopiedUpi(false), 2000);
+                                    }}
+                                    className="px-3 py-1 bg-purple-600 text-white rounded-lg text-[10px] hover:bg-purple-700 font-bold transition-colors"
+                                  >
+                                    {copiedUpi ? 'COPIED!' : 'COPY UPI ID'}
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-[10px] text-purple-700 font-semibold pt-1">
-                              • Payee: {upiInitiated.payeeName} | Fixed Amount: ₹{upiInitiated.amount}
+
+                            <div className="text-[11px] text-purple-900 font-bold bg-white/80 p-3 rounded-xl border border-purple-200 flex flex-wrap items-center justify-between gap-2">
+                              <div>• Payee: <strong>{upiInitiated.payeeName}</strong></div>
+                              <div>• Fixed Amount: <strong className="text-purple-950 text-xs">₹{upiInitiated.amount}</strong></div>
+                              <div>• Ref: <span className="font-mono text-purple-800">{upiInitiated.transactionRef}</span></div>
                             </div>
-                            <div className="text-[10px] text-amber-800 font-bold bg-amber-50 p-2 rounded-lg border border-amber-200">
+
+                            <div className="text-[10px] text-amber-800 font-bold bg-amber-50 p-2.5 rounded-xl border border-amber-200">
                               ⚠️ Note: Verification Pending with KAT Admin. Receipt will be generated once payment is confirmed in bank records.
                             </div>
                           </div>
@@ -697,31 +721,51 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                         </button>
 
                         {upiInitiated && upiInitiated.method === 'Google Pay' && (
-                          <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-2 text-xs text-blue-900 animate-in fade-in">
-                            <div className="font-extrabold flex items-center gap-1.5 text-blue-950">
+                          <div className="p-5 rounded-2xl bg-blue-50 border border-blue-200 space-y-4 text-xs text-blue-900 animate-in fade-in">
+                            <div className="font-extrabold flex items-center gap-2 text-blue-950 text-sm">
                               <Clock className="w-4 h-4 text-blue-700" />
                               <span>Payment Initiated — Verification Pending</span>
                             </div>
-                            <p className="text-[11px] text-blue-800 leading-relaxed">
-                              If Google Pay did not open automatically, pay using our official KAT Merchant UPI ID below:
-                            </p>
-                            <div className="p-3 bg-white rounded-xl border border-blue-200 flex items-center justify-between font-mono font-bold">
-                              <span>{upiInitiated.upiId}</span>
-                              <button
-                                onClick={() => {
-                                  navigator.clipboard.writeText(upiInitiated.upiId);
-                                  setCopiedUpi(true);
-                                  setTimeout(() => setCopiedUpi(false), 2000);
-                                }}
-                                className="px-3 py-1 bg-blue-100 text-blue-900 rounded-lg text-[10px] hover:bg-blue-200 font-bold"
-                              >
-                                {copiedUpi ? 'COPIED!' : 'COPY UPI ID'}
-                              </button>
+                            
+                            {/* QR Code and Desktop Transfer Information */}
+                            <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-blue-200 shadow-sm">
+                              <div className="bg-white p-2 rounded-xl border border-blue-200 shadow-sm flex-shrink-0">
+                                <img
+                                  src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiInitiated.upiUrl)}`}
+                                  alt="Google Pay Payment QR Code"
+                                  className="w-32 h-32 object-contain"
+                                />
+                              </div>
+                              <div className="space-y-2 flex-1 text-center sm:text-left">
+                                <div className="text-[11px] font-bold text-blue-950">
+                                  📱 Mobile App / QR Scan Instructions:
+                                </div>
+                                <p className="text-[10px] text-blue-800 leading-relaxed">
+                                  Open <strong>Google Pay</strong> on your phone and scan this QR code, or use our official payee UPI ID below:
+                                </p>
+                                <div className="p-2.5 bg-blue-50 rounded-xl border border-blue-200 flex items-center justify-between font-mono font-bold text-xs">
+                                  <span className="text-blue-950">{upiInitiated.upiId}</span>
+                                  <button
+                                    onClick={() => {
+                                      navigator.clipboard.writeText(upiInitiated.upiId);
+                                      setCopiedUpi(true);
+                                      setTimeout(() => setCopiedUpi(false), 2000);
+                                    }}
+                                    className="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] hover:bg-blue-700 font-bold transition-colors"
+                                  >
+                                    {copiedUpi ? 'COPIED!' : 'COPY UPI ID'}
+                                  </button>
+                                </div>
+                              </div>
                             </div>
-                            <div className="text-[10px] text-blue-700 font-semibold pt-1">
-                              • Payee: {upiInitiated.payeeName} | Fixed Amount: ₹{upiInitiated.amount}
+
+                            <div className="text-[11px] text-blue-900 font-bold bg-white/80 p-3 rounded-xl border border-blue-200 flex flex-wrap items-center justify-between gap-2">
+                              <div>• Payee: <strong>{upiInitiated.payeeName}</strong></div>
+                              <div>• Fixed Amount: <strong className="text-blue-950 text-xs">₹{upiInitiated.amount}</strong></div>
+                              <div>• Ref: <span className="font-mono text-blue-800">{upiInitiated.transactionRef}</span></div>
                             </div>
-                            <div className="text-[10px] text-amber-800 font-bold bg-amber-50 p-2 rounded-lg border border-amber-200">
+
+                            <div className="text-[10px] text-amber-800 font-bold bg-amber-50 p-2.5 rounded-xl border border-amber-200">
                               ⚠️ Note: Verification Pending with KAT Admin. Receipt will be generated once payment is confirmed in bank records.
                             </div>
                           </div>
