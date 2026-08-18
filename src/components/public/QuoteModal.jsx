@@ -820,27 +820,35 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                               <span>Payment Initiated — Verification Pending</span>
                             </div>
                             
-                            {/* QR Code and Desktop Transfer Information */}
+                            {/* QR Code and PhonePe Transfer Information */}
                             <div className="flex flex-col sm:flex-row items-center gap-4 bg-white p-4 rounded-2xl border border-purple-200 shadow-sm">
-                              <div className="bg-white p-2 rounded-xl border border-purple-200 shadow-sm flex-shrink-0">
+                              <div className="bg-white p-2 rounded-xl border border-purple-200 shadow-sm flex-shrink-0 text-center">
                                 <img
                                   src={`https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=${encodeURIComponent(upiInitiated.upiUrl)}`}
                                   alt="PhonePe Payment QR Code"
-                                  className="w-32 h-32 object-contain"
+                                  className="w-32 h-32 object-contain mx-auto"
                                 />
+                                <span className="text-[9px] font-bold text-purple-700 block mt-1">Scan with PhonePe</span>
                               </div>
-                              <div className="space-y-2 flex-1 text-center sm:text-left">
+
+                              <div className="space-y-2 flex-1 text-center sm:text-left w-full">
                                 <div className="text-[11px] font-bold text-purple-950">
-                                  📱 Mobile App / QR Scan Instructions:
+                                  📱 PhonePe Transfer Details:
                                 </div>
                                 <p className="text-[10px] text-purple-800 leading-relaxed">
-                                  Open <strong>PhonePe</strong> on your phone and scan this QR code, or use our official payee UPI ID below:
+                                  Open <strong>PhonePe</strong> → Tap <strong>"To Mobile Number"</strong> or scan QR code:
                                 </p>
+
+                                {/* PhonePe Number Row */}
                                 <div className="p-2.5 bg-purple-50 rounded-xl border border-purple-200 flex items-center justify-between font-mono font-bold text-xs">
-                                  <span className="text-purple-950">{upiInitiated.upiId}</span>
+                                  <div>
+                                    <span className="text-[9px] text-purple-600 block font-sans font-bold">PHONEPE NUMBER:</span>
+                                    <span className="text-purple-950 text-sm">6301399193</span>
+                                  </div>
                                   <button
+                                    type="button"
                                     onClick={() => {
-                                      navigator.clipboard.writeText(upiInitiated.upiId);
+                                      navigator.clipboard.writeText('6301399193');
                                       setCopiedUpi(true);
                                       setTimeout(() => setCopiedUpi(false), 2000);
                                     }}

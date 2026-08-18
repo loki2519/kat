@@ -1,6 +1,7 @@
 // Central Backend Payment Configuration for KAT Digital Solutions
 export const PAYMENT_CONFIG = {
   UPI_ID: process.env.KAT_UPI_ID || process.env.VITE_KAT_UPI_ID || '6301399193-3@ybl',
+  PHONEPE_NUMBER: process.env.KAT_PHONEPE_NUMBER || '6301399193',
   PAYEE_NAME: process.env.KAT_PAYEE_NAME || process.env.VITE_KAT_PAYEE_NAME || 'maddi lokesh reddy',
   CURRENCY: 'INR',
 };
