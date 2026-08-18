@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import logoSvg from '../../assets/kat-logo.png';
 
 export default function Footer({ onOpenQuote }) {
@@ -77,7 +78,13 @@ export default function Footer({ onOpenQuote }) {
         {/* Bottom Copyright */}
         <div className="pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-kat-soft/60">
           <p>© 2026 KAT. All rights reserved.</p>
-          <p className="text-[11px]">Digital Technology &amp; Creative Solutions</p>
+          <div className="flex items-center gap-4">
+            <span className="text-[11px]">Digital Technology &amp; Creative Solutions</span>
+            <span className="text-white/20">•</span>
+            <Link to="/admin" className="text-kat-bright hover:text-white font-semibold transition-colors flex items-center gap-1">
+              <span>🔐 Admin Portal</span>
+            </Link>
+          </div>
         </div>
 
       </div>
