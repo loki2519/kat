@@ -101,53 +101,77 @@
   will-change: transform;
 }
 
-/* ═══════════════════════════════════════════════════
-   PRINT STYLES — Only show the payment receipt
-   ═══════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════════
+   PRINT STYLES — ONE clean receipt page, zero blank pages.
+
+   HOW IT WORKS:
+   handlePrintReceipt() clones #printable-receipt → appends it
+   to <body> as #kat-print-clone → adds .kat-printing to <body>
+   → calls window.print() → removes clone after print.
+
+   This completely escapes the fixed/overflow modal container
+   that was causing 20+ blank pages with the old approach.
+   ═══════════════════════════════════════════════════════════════ */
 @media print {
-  /* Hide all elements on page */
-  body * {
-    visibility: hidden !important;
+
+  @page {
+    size: A4 portrait;
+    margin: 0;
   }
 
-  /* Make printable receipt and its children visible */
-  #printable-receipt,
-  #printable-receipt * {
-    visibility: visible !important;
-  }
-
-  /* Position printable receipt at absolute top */
-  #printable-receipt {
-    position: absolute !important;
-    left: 0 !important;
-    top: 0 !important;
-    width: 100% !important;
-    background: #FFFFFF !important;
-    color: #152238 !important;
-    padding: 20px !important;
-    margin: 0 !important;
-    border: none !important;
-    box-shadow: none !important;
-    z-index: 999999 !important;
-  }
-
-  /* Ensure logo in printed receipt displays clearly */
-  #printable-receipt img {
-    visibility: visible !important;
-    display: block !important;
-    max-height: 60px !important;
-    width: auto !important;
-    filter: none !important;
-  }
-
-  /* Hide action buttons during print */
-  .print\:hidden {
+  /* When NOT printing via button (fallback) — hide everything */
+  body:not(.kat-printing) * {
     display: none !important;
   }
 
-  /* Single A4 Page setup */
-  @page {
-    size: A4 portrait;
-    margin: 12mm;
+  /* When printing via button — hide all direct body children */
+  body.kat-printing > * {
+    display: none !important;
+  }
+
+  /* Show ONLY the cloned receipt appended directly to body */
+  body.kat-printing > #kat-print-clone {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    background: #FFFFFF !important;
+    color: #152238 !important;
+    padding: 14mm 16mm !important;
+    margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    animation: none !important;
+    transform: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* All receipt children — visible, no animations */
+  body.kat-printing > #kat-print-clone * {
+    visibility: visible !important;
+    animation: none !important;
+    transform: none !important;
+    transition: none !important;
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Logo */
+  body.kat-printing > #kat-print-clone img {
+    display: block !important;
+    max-height: 52px !important;
+    width: auto !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+  }
+
+  /* Hide the print/close action buttons cloned along with the receipt */
+  body.kat-printing > #kat-print-clone .print\:hidden {
+    display: none !important;
   }
 }

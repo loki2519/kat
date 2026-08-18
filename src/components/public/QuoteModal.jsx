@@ -297,6 +297,26 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   };
 
   const handlePrintReceipt = () => {
+    // The receipt lives inside a fixed inset-0 + overflow-y-auto modal.
+    // window.print() on the full DOM causes 20+ blank pages because the
+    // browser measures the entire modal height as printable space.
+    // Solution: clone the receipt node, inject it directly into <body>
+    // (outside all modal ancestors), print, then remove the clone.
+    const receiptEl = document.getElementById('printable-receipt');
+    if (!receiptEl) { window.print(); return; }
+
+    const clone = receiptEl.cloneNode(true);
+    clone.id = 'kat-print-clone';
+    clone.style.cssText = '';            // strip any inline overrides
+    document.body.appendChild(clone);
+    document.body.classList.add('kat-printing');
+
+    const afterPrint = () => {
+      document.body.removeChild(clone);
+      document.body.classList.remove('kat-printing');
+      window.removeEventListener('afterprint', afterPrint);
+    };
+    window.addEventListener('afterprint', afterPrint);
     window.print();
   };
 
