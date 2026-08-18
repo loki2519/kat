@@ -34,7 +34,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   // Official Payment Receipt Object State
   const [receiptData, setReceiptData] = useState(null);
 
-  const katUpiId = import.meta.env.VITE_KAT_UPI_ID || 'katdigital@ybl';
+  const katUpiId = import.meta.env.VITE_KAT_UPI_ID || '6301399193-3@ybl';
   const katPayeeName = import.meta.env.VITE_KAT_PAYEE_NAME || 'KAT Digital Solutions';
 
   useEffect(() => {

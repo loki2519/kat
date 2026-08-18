@@ -202,7 +202,7 @@ router.post('/initiate-upi', (req, res) => {
     return res.status(400).json({ error: 'This quotation has already been paid and verified.' });
   }
 
-  const upiId = process.env.VITE_KAT_UPI_ID || process.env.KAT_UPI_ID || 'katdigital@ybl';
+  const upiId = process.env.VITE_KAT_UPI_ID || process.env.KAT_UPI_ID || '6301399193-3@ybl';
   const payeeName = process.env.VITE_KAT_PAYEE_NAME || process.env.KAT_PAYEE_NAME || 'KAT Digital Solutions';
   const validMethod = ['PhonePe', 'Google Pay', 'UPI'].includes(payment_method) ? payment_method : 'PhonePe';
 
