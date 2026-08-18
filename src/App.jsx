@@ -28,6 +28,7 @@ import QuoteManager from './components/admin/QuoteManager';
 import PaymentTracker from './components/admin/PaymentTracker';
 import AnalyticsView from './components/admin/AnalyticsView';
 import ReviewsManager from './components/admin/ReviewsManager';
+import NewsManager from './components/admin/NewsManager';
 
 // Unified Admin Route Container
 function AdminPageContainer() {
@@ -117,6 +118,7 @@ export default function App() {
             <Route path="payments" element={<PaymentTracker />} />
             <Route path="analytics" element={<AnalyticsView />} />
             <Route path="reviews" element={<ReviewsManager />} />
+            <Route path="news" element={<NewsManager />} />
           </Route>
 
           {/* Wildcard Subroute Handler for /admin/* */}
@@ -127,6 +129,7 @@ export default function App() {
             <Route path="payments" element={<PaymentTracker />} />
             <Route path="analytics" element={<AnalyticsView />} />
             <Route path="reviews" element={<ReviewsManager />} />
+            <Route path="news" element={<NewsManager />} />
           </Route>
 
           {/* Fallback */}

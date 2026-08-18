@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useLocation, useNavigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { LayoutDashboard, FileText, CreditCard, BarChart3, MessageSquare, LogOut, Menu, X, Shield, Globe } from 'lucide-react';
+import { LayoutDashboard, FileText, CreditCard, BarChart3, MessageSquare, LogOut, Menu, X, Shield, Globe, Megaphone } from 'lucide-react';
 import logoSvg from '../../assets/kat-logo.png';
 
 export default function AdminLayout() {
@@ -21,6 +21,7 @@ export default function AdminLayout() {
     { name: 'Payment Records', path: '/admin/payments', icon: CreditCard },
     { name: 'Analytics & Reports', path: '/admin/analytics', icon: BarChart3 },
     { name: 'Reviews & Moderation', path: '/admin/reviews', icon: MessageSquare },
+    { name: 'News Management', path: '/admin/news', icon: Megaphone },
   ];
 
   return (

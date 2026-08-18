@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, CheckCircle2, Copy, CreditCard, Clock, Sparkles, ShieldCheck, Printer, AlertCircle, QrCode } from 'lucide-react';
+import { X, Send, CheckCircle2, Copy, CreditCard, Clock, Sparkles, ShieldCheck, Printer, AlertCircle, QrCode, Download } from 'lucide-react';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 import logoSvg from '../../assets/kat-logo.png';
 import { getUpiId, getPayeeName } from '../../config/paymentConfig';
 
@@ -34,6 +36,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
 
   // Official Payment Receipt Object State
   const [receiptData, setReceiptData] = useState(null);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
 
   const katUpiId = getUpiId();
   const katPayeeName = getPayeeName();
@@ -296,28 +299,119 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
     }
   };
 
+  // ══════════════════════════════════════════════════════════════════════
+  // PRINT RECEIPT (Isolated Hidden Iframe — EXACTLY 1 PAGE, 0 Blank Pages)
+  // ══════════════════════════════════════════════════════════════════════
   const handlePrintReceipt = () => {
-    // The receipt lives inside a fixed inset-0 + overflow-y-auto modal.
-    // window.print() on the full DOM causes 20+ blank pages because the
-    // browser measures the entire modal height as printable space.
-    // Solution: clone the receipt node, inject it directly into <body>
-    // (outside all modal ancestors), print, then remove the clone.
-    const receiptEl = document.getElementById('printable-receipt');
-    if (!receiptEl) { window.print(); return; }
+    const receiptCard = document.getElementById('printable-receipt-card');
+    if (!receiptCard) return;
 
-    const clone = receiptEl.cloneNode(true);
-    clone.id = 'kat-print-clone';
-    clone.style.cssText = '';            // strip any inline overrides
-    document.body.appendChild(clone);
-    document.body.classList.add('kat-printing');
+    // Create an isolated hidden iframe for printing (completely escapes modal overflow)
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = '0';
+    document.body.appendChild(iframe);
 
-    const afterPrint = () => {
-      document.body.removeChild(clone);
-      document.body.classList.remove('kat-printing');
-      window.removeEventListener('afterprint', afterPrint);
-    };
-    window.addEventListener('afterprint', afterPrint);
-    window.print();
+    const doc = iframe.contentWindow.document;
+
+    // Copy stylesheet tags from main page to preserve KAT Tailwind styles and logo rendering
+    const stylesHtml = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+      .map(style => style.outerHTML)
+      .join('\n');
+
+    doc.open();
+    doc.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>KAT Payment Receipt - ${receiptData?.receiptNo || 'VERIFIED'}</title>
+          ${stylesHtml}
+          <style>
+            @page {
+              size: A4 portrait;
+              margin: 0;
+            }
+            html, body {
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
+              width: 100% !important;
+              height: auto !important;
+              overflow: visible !important;
+            }
+            .print-receipt-container {
+              padding: 12mm 15mm !important;
+              box-sizing: border-box !important;
+              width: 100% !important;
+              background: #ffffff !important;
+            }
+            .no-print {
+              display: none !important;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="print-receipt-container">
+            ${receiptCard.outerHTML}
+          </div>
+        </body>
+      </html>
+    `);
+    doc.close();
+
+    setTimeout(() => {
+      iframe.contentWindow.focus();
+      iframe.contentWindow.print();
+      setTimeout(() => {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+      }, 1000);
+    }, 350);
+  };
+
+  // ══════════════════════════════════════════════════════════════════════
+  // DOWNLOAD PDF RECEIPT (html2canvas + jsPDF — EXACTLY 1 A4 PAGE)
+  // ══════════════════════════════════════════════════════════════════════
+  const handleDownloadPdf = async () => {
+    const receiptCard = document.getElementById('printable-receipt-card');
+    if (!receiptCard) return;
+
+    setDownloadingPdf(true);
+    setError('');
+
+    try {
+      // Capture canvas of ONLY the receipt card element
+      const canvas = await html2canvas(receiptCard, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#FFFFFF',
+      });
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4',
+      });
+
+      const pageWidth = pdf.internal.pageSize.getWidth(); // 210mm
+      const imgWidth = pageWidth - 20; // 10mm margins on left and right
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+      pdf.addImage(imgData, 'PNG', 10, 15, imgWidth, imgHeight);
+      pdf.save(`KAT_Payment_Receipt_${receiptData?.receiptNo || 'VERIFIED'}.pdf`);
+    } catch (err) {
+      console.error('PDF generation error:', err);
+      setError('Could not generate PDF download. Please use Print Receipt.');
+    } finally {
+      setDownloadingPdf(false);
+    }
   };
 
   return (
@@ -358,7 +452,10 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
         {/* ════════════════════════════════════════════════════════ */}
         {receiptData ? (
           <div className="space-y-6 animate-in fade-in" id="printable-receipt">
-            <div className="border-2 border-kat-navy/20 p-6 sm:p-8 rounded-3xl bg-kat-verylight/50 space-y-6 relative overflow-hidden">
+            <div
+              id="printable-receipt-card"
+              className="border-2 border-kat-navy/20 p-6 sm:p-8 rounded-3xl bg-white space-y-6 relative overflow-hidden shadow-sm"
+            >
               
               {/* Receipt Stamp Watermark */}
               <div className="absolute top-6 right-6 opacity-15 pointer-events-none">
@@ -380,7 +477,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
               </div>
 
               {/* Transaction Details Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-white p-4 rounded-2xl border border-kat-border text-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 bg-kat-verylight/60 p-4 rounded-2xl border border-kat-border text-xs">
                 <div>
                   <span className="text-[10px] font-bold text-kat-muted uppercase block">CUSTOMER INFORMATION</span>
                   <div className="font-extrabold text-kat-navy text-sm mt-0.5">{receiptData.customerName}</div>
@@ -434,20 +531,31 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
             {/* Receipt Actions */}
             <div className="flex flex-col sm:flex-row gap-3 pt-2 print:hidden">
               <button
+                type="button"
                 onClick={handlePrintReceipt}
-                className="flex-1 inline-flex items-center justify-center gap-2 bg-kat-navy hover:bg-kat-deep text-white py-3 px-6 rounded-xl font-bold text-xs shadow-md transition-all"
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-kat-navy hover:bg-kat-deep text-white py-3.5 px-5 rounded-xl font-bold text-xs shadow-md transition-all"
               >
                 <Printer className="w-4 h-4" />
-                <span>PRINT / DOWNLOAD RECEIPT</span>
+                <span>PRINT RECEIPT</span>
               </button>
               <button
+                type="button"
+                onClick={handleDownloadPdf}
+                disabled={downloadingPdf}
+                className="flex-1 inline-flex items-center justify-center gap-2 bg-kat-primary hover:bg-kat-deep text-white py-3.5 px-5 rounded-xl font-bold text-xs shadow-md transition-all disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                <span>{downloadingPdf ? 'GENERATING PDF...' : 'DOWNLOAD RECEIPT'}</span>
+              </button>
+              <button
+                type="button"
                 onClick={() => {
                   setReceiptData(null);
                   onClose();
                 }}
-                className="px-6 py-3 rounded-xl bg-kat-soft hover:bg-kat-verylight text-kat-navy border border-kat-border font-bold text-xs"
+                className="px-5 py-3.5 rounded-xl bg-kat-soft hover:bg-kat-verylight text-kat-navy border border-kat-border font-bold text-xs"
               >
-                Close Window
+                Close
               </button>
             </div>
           </div>

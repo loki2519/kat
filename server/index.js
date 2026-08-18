@@ -12,6 +12,7 @@ import webhookRoutes from './routes/webhooks.js';
 import analyticsRoutes from './routes/analytics.js';
 import contactRoutes from './routes/contact.js';
 import reviewRoutes from './routes/reviews.js';
+import newsRoutes from './routes/news.js';
 
 dotenv.config();
 
@@ -49,6 +50,7 @@ app.use('/api/webhooks', webhookRoutes);
 app.use('/api/admin/analytics', analyticsRoutes);
 app.use('/api/contact', contactRoutes);
 app.use('/api/reviews', reviewRoutes);
+app.use('/api/news', newsRoutes);
 
 // Serve Frontend Static Build files in Production
 const distPath = path.join(__dirname, '..', 'dist');

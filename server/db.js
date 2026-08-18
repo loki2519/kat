@@ -17,6 +17,7 @@ let memoryDb = {
   admin_notes: [],
   contact_submissions: [],
   reviews: [],
+  news: [],
 };
 
 // Load persistent data from JSON file
@@ -343,6 +344,57 @@ export const db = {
       return deleted;
     }
     return null;
+  },
+
+  // Scrolling News
+  createNews: (data) => {
+    memoryDb.news = memoryDb.news || [];
+    const newItem = {
+      id: memoryDb.news.length > 0 ? Math.max(...memoryDb.news.map(n => n.id || 0)) + 1 : 1,
+      text: data.text,
+      status: data.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    memoryDb.news.unshift(newItem);
+    saveDb();
+    return newItem;
+  },
+
+  getNews: () => memoryDb.news || [],
+
+  getActiveNews: () => (memoryDb.news || []).filter(n => n.status === 'ACTIVE'),
+
+  updateNews: (id, updates) => {
+    memoryDb.news = memoryDb.news || [];
+    const idx = memoryDb.news.findIndex(n => String(n.id) === String(id));
+    if (idx !== -1) {
+      memoryDb.news[idx] = {
+        ...memoryDb.news[idx],
+        ...updates,
+        updated_at: new Date().toISOString(),
+      };
+      saveDb();
+      return memoryDb.news[idx];
+    }
+    return null;
+  },
+
+  deleteNews: (id) => {
+    memoryDb.news = memoryDb.news || [];
+    const idx = memoryDb.news.findIndex(n => String(n.id) === String(id));
+    if (idx !== -1) {
+      const deleted = memoryDb.news.splice(idx, 1)[0];
+      saveDb();
+      return deleted;
+    }
+    return null;
+  },
+
+  deleteAllNews: () => {
+    memoryDb.news = [];
+    saveDb();
+    return true;
   },
 };
 
