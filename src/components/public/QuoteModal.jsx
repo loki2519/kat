@@ -26,8 +26,16 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   const [trackingLoading, setTrackingLoading] = useState(false);
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   
+  // Payment Method Selection State (Razorpay | PhonePe | Google Pay)
+  const [selectedPaymentMethod, setSelectedPaymentMethod] = useState('Razorpay');
+  const [upiInitiated, setUpiInitiated] = useState(null);
+  const [copiedUpi, setCopiedUpi] = useState(false);
+
   // Official Payment Receipt Object State
   const [receiptData, setReceiptData] = useState(null);
+
+  const katUpiId = import.meta.env.VITE_KAT_UPI_ID || 'katdigital@ybl';
+  const katPayeeName = import.meta.env.VITE_KAT_PAYEE_NAME || 'KAT Digital Solutions';
 
   useEffect(() => {
     if (initialService) {
@@ -82,6 +90,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
     setTrackingLoading(true);
     setError('');
     setReceiptData(null);
+    setUpiInitiated(null);
 
     try {
       const res = await fetch(`/api/quotes/track/${trackQuoteId.trim()}`);
@@ -97,14 +106,13 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
   };
 
   // ══════════════════════════════════════════════════════════════════════
-  // STRICT RAZORPAY PAYMENT FLOW (Real Order -> Real Checkout -> Server Verify)
+  // 1. RAZORPAY PAYMENT OPTION (Real Order -> Real Checkout -> Verification)
   // ══════════════════════════════════════════════════════════════════════
   const handleRazorpayPayment = async (targetQuoteId) => {
     setPaymentProcessing(true);
     setError('');
 
     try {
-      // 1. Backend creates Razorpay Order (amount in paise on Razorpay server)
       const res = await fetch('/api/payments/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -113,15 +121,13 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
 
       const orderData = await res.json();
       if (!res.ok) {
-        throw new Error(orderData.error || 'Failed to create payment order on Razorpay servers.');
+        throw new Error(orderData.error || 'Razorpay order creation failed. If Razorpay is not configured yet, please use PhonePe or Google Pay.');
       }
 
-      // Ensure Razorpay SDK is loaded
       if (!window.Razorpay) {
-        throw new Error('Razorpay Checkout SDK is loading. Please check internet connection or refresh page.');
+        throw new Error('Razorpay SDK is loading. Please check internet connection or refresh page.');
       }
 
-      // 2. Configure Real Razorpay Checkout Options
       const options = {
         key: orderData.key_id,
         amount: orderData.amount, // in paise
@@ -129,7 +135,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
         name: 'KAT Digital Solutions',
         description: `Payment for ${orderData.service_name} (${orderData.quote_id})`,
         image: logoSvg,
-        order_id: orderData.order_id, // Real backend Razorpay Order ID (order_xxxx)
+        order_id: orderData.order_id,
         prefill: {
           name: orderData.customer_name,
           email: orderData.customer_email,
@@ -142,12 +148,12 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
           color: '#0B3B82',
         },
         handler: async function (response) {
-          // 3. Customer completes checkout -> Send 3 parameters to backend signature verification
           await finalizePaymentVerification({
             razorpay_order_id: response.razorpay_order_id,
             razorpay_payment_id: response.razorpay_payment_id,
             razorpay_signature: response.razorpay_signature,
             quote_id: targetQuoteId,
+            payment_method: 'Razorpay',
             orderData,
           });
         },
@@ -167,7 +173,6 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
         setError(`PAYMENT FAILED: ${failMsg}. Please try again.`);
       });
 
-      // 4. Open Razorpay Checkout modal
       rzp.open();
     } catch (err) {
       setError(err.message || 'Error initializing payment.');
@@ -175,8 +180,66 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
     }
   };
 
-  // 5. Server-Side HMAC-SHA256 Signature Verification & Receipt Display
-  const finalizePaymentVerification = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature, quote_id, orderData }) => {
+  // ══════════════════════════════════════════════════════════════════════
+  // 2 & 3. PHONEPE AND GOOGLE PAY UPI OPTIONS (Direct App Launch + Verification Pending)
+  // ══════════════════════════════════════════════════════════════════════
+  const handleUpiPayment = async (methodName, targetQuoteId, amount) => {
+    setPaymentProcessing(true);
+    setError('');
+
+    try {
+      const res = await fetch('/api/payments/initiate-upi', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quote_id: targetQuoteId,
+          payment_method: methodName,
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || `Failed to initiate ${methodName} payment`);
+
+      const targetUpiId = data.upi_id || katUpiId;
+      const targetPayee = data.payee_name || katPayeeName;
+
+      setUpiInitiated({
+        method: methodName,
+        upiId: targetUpiId,
+        payeeName: targetPayee,
+        amount: amount,
+        quoteId: targetQuoteId,
+        message: data.message,
+      });
+
+      // Construct standard UPI deep link with fixed amount
+      const upiUrl = `upi://pay?pa=${targetUpiId}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
+
+      // Launch UPI app deep link on mobile devices
+      if (/Android|iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+        if (methodName === 'PhonePe') {
+          window.location.href = `phonepe://pay?pa=${targetUpiId}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
+          setTimeout(() => {
+            window.location.href = upiUrl;
+          }, 1000);
+        } else if (methodName === 'Google Pay') {
+          window.location.href = `gpay://upi/pay?pa=${targetUpiId}&pn=${encodeURIComponent(targetPayee)}&am=${amount}&cu=INR&tn=${encodeURIComponent(`KAT Quote ${targetQuoteId}`)}`;
+          setTimeout(() => {
+            window.location.href = upiUrl;
+          }, 1000);
+        } else {
+          window.location.href = upiUrl;
+        }
+      }
+    } catch (err) {
+      setError(err.message || `Failed to launch ${methodName}`);
+    } finally {
+      setPaymentProcessing(false);
+    }
+  };
+
+  // Server-Side Verification & Receipt Display (Only when verified)
+  const finalizePaymentVerification = async ({ razorpay_order_id, razorpay_payment_id, razorpay_signature, quote_id, payment_method = 'Razorpay', orderData }) => {
     setPaymentProcessing(true);
     setError('');
 
@@ -189,6 +252,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
           razorpay_payment_id,
           razorpay_signature,
           quote_id,
+          payment_method,
         }),
       });
 
@@ -201,9 +265,10 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
       const qDetails = trackedQuote || {};
       const receipt = {
         receiptNo: `REC-${Date.now().toString().slice(-6)}`,
-        paymentId: verifyData.payment_id || razorpay_payment_id, // Real Razorpay Payment ID (pay_xxx)
-        orderId: verifyData.order_id || razorpay_order_id,       // Real Razorpay Order ID (order_xxx)
+        paymentId: verifyData.payment_id || razorpay_payment_id,
+        orderId: verifyData.order_id || razorpay_order_id,
         quoteId: quote_id,
+        paymentMethod: payment_method,
         date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
         customerName: verifyData.customer_name || qDetails.customer_name || orderData?.customer_name || 'Valued Customer',
         customerEmail: qDetails.customer_email || orderData?.customer_email || 'N/A',
@@ -218,7 +283,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
 
       setReceiptData(receipt);
       if (trackedQuote) {
-        setTrackedQuote(prev => ({ ...prev, status: 'PAID', payment_status: 'PAID', payment_id: razorpay_payment_id }));
+        setTrackedQuote(prev => ({ ...prev, status: 'PAID', payment_status: 'PAID', payment_id: razorpay_payment_id, payment_method }));
       }
     } catch (err) {
       setError(err.message || 'Payment verification failed.');
@@ -245,7 +310,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
               </h3>
             </div>
             <p className="text-xs text-kat-muted mt-0.5">
-              {receiptData ? 'Verified Razorpay transaction record and receipt.' : 'Receive an instant Quote ID and personalized proposal from KAT.'}
+              {receiptData ? 'Verified transaction record and receipt.' : 'Receive an instant Quote ID and personalized proposal from KAT.'}
             </p>
           </div>
           <button
@@ -265,7 +330,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
         )}
 
         {/* ════════════════════════════════════════════════════════ */}
-        {/*  OFFICIAL PAYMENT RECEIPT VIEW (REAL RAZORPAY DETAILS)   */}
+        {/*  OFFICIAL PAYMENT RECEIPT VIEW (ONLY WHEN VERIFIED)      */}
         {/* ════════════════════════════════════════════════════════ */}
         {receiptData ? (
           <div className="space-y-6 animate-in fade-in" id="printable-receipt">
@@ -299,9 +364,10 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                   <div className="text-kat-muted">{receiptData.customerPhone}</div>
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-kat-muted uppercase block">RAZORPAY TRANSACTION IDs</span>
+                  <span className="text-[10px] font-bold text-kat-muted uppercase block">TRANSACTION DETAILS</span>
+                  <div className="text-kat-muted">Method: <span className="font-bold text-kat-navy">{receiptData.paymentMethod}</span></div>
                   <div className="text-kat-muted">Payment ID: <span className="font-mono font-bold text-emerald-600">{receiptData.paymentId}</span></div>
-                  <div className="text-kat-muted font-mono">Order ID: {receiptData.orderId}</div>
+                  {receiptData.orderId && <div className="text-kat-muted font-mono">Order ID: {receiptData.orderId}</div>}
                   <div className="text-kat-muted font-mono">Quote ID: {receiptData.quoteId}</div>
                 </div>
               </div>
@@ -335,7 +401,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
               <div className="flex items-center justify-between pt-2 text-[11px] text-kat-muted border-t border-kat-border">
                 <div className="flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                  <span>Verified via Razorpay HMAC-SHA256 Server Signature</span>
+                  <span>Verified via KAT Payment Server</span>
                 </div>
                 <div className="font-bold text-kat-navy">MVP Colony, Sec-9</div>
               </div>
@@ -386,7 +452,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                   <span>{copied ? 'COPIED!' : 'COPY'}</span>
                 </button>
               </div>
-              <p className="text-[11px] text-kat-muted">Save this ID to track status or complete payment via Razorpay.</p>
+              <p className="text-[11px] text-kat-muted">Save this ID to track status or complete payment via Razorpay, PhonePe, or Google Pay.</p>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-3 justify-center pt-2">
@@ -398,7 +464,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                 }}
                 className="px-6 py-3 rounded-xl bg-kat-primary text-white text-xs font-bold shadow-md hover:bg-kat-deep transition-all"
               >
-                Track Status &amp; Pay Now
+                Track Status &amp; Select Payment
               </button>
               <button
                 onClick={onClose}
@@ -462,7 +528,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
 
             {/* Tracked Quote Display Card */}
             {trackedQuote && (
-              <div className="mb-6 bg-kat-verylight p-5 rounded-2xl border border-kat-border space-y-3 animate-in fade-in">
+              <div className="mb-6 bg-kat-verylight p-5 rounded-2xl border border-kat-border space-y-4 animate-in fade-in">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-black text-kat-navy font-mono">{trackedQuote.quote_id}</span>
                   <span className={`text-[11px] font-extrabold px-3 py-1 rounded-full uppercase ${
@@ -480,17 +546,188 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                   <div><strong>Quoted Price:</strong> <span className="text-kat-navy font-extrabold text-sm">{trackedQuote.quoted_amount > 0 ? `₹${trackedQuote.quoted_amount}` : 'Pending Admin Quotation'}</span></div>
                 </div>
 
-                {/* Real Razorpay Payment Button if Quoted/Approved */}
+                {/* ════════════════════════════════════════════════════════════ */}
+                {/* 3 PAYMENT METHOD SELECTION CARDS (Razorpay / PhonePe / GPay) */}
+                {/* ════════════════════════════════════════════════════════════ */}
                 {trackedQuote.quoted_amount > 0 && trackedQuote.status !== 'PAID' && (
-                  <div className="pt-2">
-                    <button
-                      onClick={() => handleRazorpayPayment(trackedQuote.quote_id)}
-                      disabled={paymentProcessing}
-                      className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-emerald-500 text-white py-3.5 rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg disabled:opacity-50 transition-all"
-                    >
-                      <CreditCard className="w-4 h-4" />
-                      <span>{paymentProcessing ? 'Opening Razorpay Checkout...' : `PAY NOW VIA RAZORPAY (₹${trackedQuote.quoted_amount})`}</span>
-                    </button>
+                  <div className="pt-3 space-y-4">
+                    <h4 className="text-xs font-black text-kat-navy uppercase tracking-wider">
+                      SELECT PAYMENT METHOD (Fixed Amount: ₹{trackedQuote.quoted_amount})
+                    </h4>
+
+                    {/* 3 Payment Options Grid */}
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {/* Option 1: Razorpay */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPaymentMethod('Razorpay');
+                          setUpiInitiated(null);
+                        }}
+                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between space-y-2 ${
+                          selectedPaymentMethod === 'Razorpay'
+                            ? 'border-indigo-600 bg-indigo-50/70 shadow-sm ring-2 ring-indigo-500/20'
+                            : 'border-kat-border bg-white hover:border-indigo-300 hover:bg-kat-verylight/60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-indigo-900 flex items-center gap-1.5">
+                            <CreditCard className="w-4 h-4 text-indigo-600" />
+                            <span>RAZORPAY</span>
+                          </span>
+                          <span className="w-2.5 h-2.5 rounded-full bg-indigo-600" />
+                        </div>
+                        <div className="text-[10px] text-kat-muted">Cards, NetBanking &amp; Razorpay Gateway</div>
+                      </button>
+
+                      {/* Option 2: PhonePe */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPaymentMethod('PhonePe');
+                          setUpiInitiated(null);
+                        }}
+                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between space-y-2 ${
+                          selectedPaymentMethod === 'PhonePe'
+                            ? 'border-purple-600 bg-purple-50/70 shadow-sm ring-2 ring-purple-500/20'
+                            : 'border-kat-border bg-white hover:border-purple-300 hover:bg-kat-verylight/60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-purple-900 flex items-center gap-1.5">
+                            <span className="w-4 h-4 rounded-full bg-purple-600 text-white font-bold text-[9px] flex items-center justify-center">पे</span>
+                            <span>PHONEPE</span>
+                          </span>
+                          <span className="w-2.5 h-2.5 rounded-full bg-purple-600" />
+                        </div>
+                        <div className="text-[10px] text-kat-muted">Pay directly using PhonePe UPI App</div>
+                      </button>
+
+                      {/* Option 3: Google Pay */}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedPaymentMethod('Google Pay');
+                          setUpiInitiated(null);
+                        }}
+                        className={`p-3.5 rounded-2xl border text-left transition-all flex flex-col justify-between space-y-2 ${
+                          selectedPaymentMethod === 'Google Pay'
+                            ? 'border-blue-600 bg-blue-50/70 shadow-sm ring-2 ring-blue-500/20'
+                            : 'border-kat-border bg-white hover:border-blue-300 hover:bg-kat-verylight/60'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-black text-blue-900 flex items-center gap-1.5">
+                            <span className="w-4 h-4 rounded-full bg-blue-600 text-white font-bold text-[9px] flex items-center justify-center">G</span>
+                            <span>GOOGLE PAY</span>
+                          </span>
+                          <span className="w-2.5 h-2.5 rounded-full bg-blue-600" />
+                        </div>
+                        <div className="text-[10px] text-kat-muted">Pay directly using Google Pay UPI App</div>
+                      </button>
+                    </div>
+
+                    {/* Selected Option Action Panels */}
+                    {selectedPaymentMethod === 'Razorpay' && (
+                      <div className="pt-2">
+                        <button
+                          onClick={() => handleRazorpayPayment(trackedQuote.quote_id)}
+                          disabled={paymentProcessing}
+                          className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-700 to-indigo-600 text-white py-3.5 rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg disabled:opacity-50 transition-all"
+                        >
+                          <CreditCard className="w-4 h-4" />
+                          <span>{paymentProcessing ? 'Opening Razorpay Checkout...' : `PAY NOW VIA RAZORPAY (₹${trackedQuote.quoted_amount})`}</span>
+                        </button>
+                      </div>
+                    )}
+
+                    {selectedPaymentMethod === 'PhonePe' && (
+                      <div className="pt-2 space-y-3">
+                        <button
+                          onClick={() => handleUpiPayment('PhonePe', trackedQuote.quote_id, trackedQuote.quoted_amount)}
+                          disabled={paymentProcessing}
+                          className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-purple-700 to-purple-600 text-white py-3.5 rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg disabled:opacity-50 transition-all"
+                        >
+                          <span className="w-4 h-4 rounded-full bg-white text-purple-700 font-extrabold text-[10px] flex items-center justify-center">पे</span>
+                          <span>{paymentProcessing ? 'Launching PhonePe...' : `PAY WITH PHONEPE (₹${trackedQuote.quoted_amount})`}</span>
+                        </button>
+
+                        {upiInitiated && upiInitiated.method === 'PhonePe' && (
+                          <div className="p-4 rounded-2xl bg-purple-50 border border-purple-200 space-y-2 text-xs text-purple-900 animate-in fade-in">
+                            <div className="font-extrabold flex items-center gap-1.5 text-purple-950">
+                              <Clock className="w-4 h-4 text-purple-700" />
+                              <span>Payment Initiated — Verification Pending</span>
+                            </div>
+                            <p className="text-[11px] text-purple-800 leading-relaxed">
+                              If PhonePe did not open automatically, pay using our official KAT Merchant UPI ID below:
+                            </p>
+                            <div className="p-3 bg-white rounded-xl border border-purple-200 flex items-center justify-between font-mono font-bold">
+                              <span>{upiInitiated.upiId}</span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(upiInitiated.upiId);
+                                  setCopiedUpi(true);
+                                  setTimeout(() => setCopiedUpi(false), 2000);
+                                }}
+                                className="px-3 py-1 bg-purple-100 text-purple-900 rounded-lg text-[10px] hover:bg-purple-200 font-bold"
+                              >
+                                {copiedUpi ? 'COPIED!' : 'COPY UPI ID'}
+                              </button>
+                            </div>
+                            <div className="text-[10px] text-purple-700 font-semibold pt-1">
+                              • Payee: {upiInitiated.payeeName} | Fixed Amount: ₹{upiInitiated.amount}
+                            </div>
+                            <div className="text-[10px] text-amber-800 font-bold bg-amber-50 p-2 rounded-lg border border-amber-200">
+                              ⚠️ Note: Verification Pending with KAT Admin. Receipt will be generated once payment is confirmed in bank records.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {selectedPaymentMethod === 'Google Pay' && (
+                      <div className="pt-2 space-y-3">
+                        <button
+                          onClick={() => handleUpiPayment('Google Pay', trackedQuote.quote_id, trackedQuote.quoted_amount)}
+                          disabled={paymentProcessing}
+                          className="w-full inline-flex items-center justify-center gap-2 bg-gradient-to-r from-blue-600 to-blue-500 text-white py-3.5 rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg disabled:opacity-50 transition-all"
+                        >
+                          <span className="w-4 h-4 rounded-full bg-white text-blue-600 font-extrabold text-[10px] flex items-center justify-center">G</span>
+                          <span>{paymentProcessing ? 'Launching Google Pay...' : `PAY WITH GOOGLE PAY (₹${trackedQuote.quoted_amount})`}</span>
+                        </button>
+
+                        {upiInitiated && upiInitiated.method === 'Google Pay' && (
+                          <div className="p-4 rounded-2xl bg-blue-50 border border-blue-200 space-y-2 text-xs text-blue-900 animate-in fade-in">
+                            <div className="font-extrabold flex items-center gap-1.5 text-blue-950">
+                              <Clock className="w-4 h-4 text-blue-700" />
+                              <span>Payment Initiated — Verification Pending</span>
+                            </div>
+                            <p className="text-[11px] text-blue-800 leading-relaxed">
+                              If Google Pay did not open automatically, pay using our official KAT Merchant UPI ID below:
+                            </p>
+                            <div className="p-3 bg-white rounded-xl border border-blue-200 flex items-center justify-between font-mono font-bold">
+                              <span>{upiInitiated.upiId}</span>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(upiInitiated.upiId);
+                                  setCopiedUpi(true);
+                                  setTimeout(() => setCopiedUpi(false), 2000);
+                                }}
+                                className="px-3 py-1 bg-blue-100 text-blue-900 rounded-lg text-[10px] hover:bg-blue-200 font-bold"
+                              >
+                                {copiedUpi ? 'COPIED!' : 'COPY UPI ID'}
+                              </button>
+                            </div>
+                            <div className="text-[10px] text-blue-700 font-semibold pt-1">
+                              • Payee: {upiInitiated.payeeName} | Fixed Amount: ₹{upiInitiated.amount}
+                            </div>
+                            <div className="text-[10px] text-amber-800 font-bold bg-amber-50 p-2 rounded-lg border border-amber-200">
+                              ⚠️ Note: Verification Pending with KAT Admin. Receipt will be generated once payment is confirmed in bank records.
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -498,7 +735,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                   <div className="p-3 rounded-xl bg-emerald-100 text-emerald-800 text-xs font-bold flex items-center justify-between gap-2">
                     <div className="flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <span>Payment Verified (Razorpay ID: {trackedQuote.payment_id || 'VERIFIED'})</span>
+                      <span>Payment Verified ({trackedQuote.payment_method || 'Razorpay'} ID: {trackedQuote.payment_id || 'VERIFIED'})</span>
                     </div>
                     {receiptData ? null : (
                       <button
@@ -508,6 +745,7 @@ export default function QuoteModal({ isOpen, onClose, initialService = '', initi
                             paymentId: trackedQuote.payment_id || `pay_${trackedQuote.quote_id}`,
                             orderId: trackedQuote.order_id || `order_${trackedQuote.quote_id}`,
                             quoteId: trackedQuote.quote_id,
+                            paymentMethod: trackedQuote.payment_method || 'Razorpay',
                             date: new Date().toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' }),
                             customerName: trackedQuote.customer_name,
                             customerEmail: trackedQuote.customer_email || 'N/A',

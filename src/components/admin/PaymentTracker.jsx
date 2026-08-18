@@ -46,6 +46,35 @@ export default function PaymentTracker() {
     }
   };
 
+  const handleApprovePayment = async (quoteId) => {
+    const txnRef = window.prompt('Enter transaction reference ID or UTR number received in bank account:');
+    if (!txnRef) return;
+
+    try {
+      const res = await fetch('/api/payments/admin/verify-manual', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          quote_id: quoteId,
+          transaction_ref: txnRef,
+        }),
+      });
+
+      if (res.ok) {
+        alert('Payment approved and marked as VERIFIED / PAID.');
+        fetchPayments();
+      } else {
+        const errData = await res.json();
+        alert(errData.error || 'Failed to approve payment');
+      }
+    } catch (e) {
+      alert(e.message);
+    }
+  };
+
   return (
     <div className="space-y-6">
       
@@ -53,7 +82,7 @@ export default function PaymentTracker() {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-kat-navy">Payment Management</h1>
-          <p className="text-xs text-kat-muted">Server-verified Razorpay transaction records and payment order history</p>
+          <p className="text-xs text-kat-muted">Server-verified Razorpay, PhonePe &amp; Google Pay transaction records</p>
         </div>
 
         <button
@@ -68,7 +97,7 @@ export default function PaymentTracker() {
       {/* Payment Security Badge */}
       <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex items-center gap-3 text-xs text-emerald-800 font-semibold">
         <ShieldCheck className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-        <span>All payment statuses are updated only after HMAC-SHA256 server-side signature verification or Razorpay webhooks.</span>
+        <span>Payment status is updated only after HMAC-SHA256 signature verification or KAT Admin approval.</span>
       </div>
 
       {/* Table */}
@@ -86,9 +115,11 @@ export default function PaymentTracker() {
             <table className="w-full text-left text-xs">
               <thead>
                 <tr className="border-b border-kat-border text-kat-muted uppercase tracking-wider text-[10px] font-bold bg-kat-verylight/60">
-                  <th className="py-3.5 px-4">Payment ID</th>
+                  <th className="py-3.5 px-4">Method</th>
+                  <th className="py-3.5 px-4">Payment ID / Ref</th>
                   <th className="py-3.5 px-4">Order ID</th>
                   <th className="py-3.5 px-4">Quote ID</th>
+                  <th className="py-3.5 px-4">Customer</th>
                   <th className="py-3.5 px-4">Amount</th>
                   <th className="py-3.5 px-4">Status</th>
                   <th className="py-3.5 px-4">Verified Date</th>
@@ -98,21 +129,49 @@ export default function PaymentTracker() {
               <tbody className="divide-y divide-kat-border/60 font-medium">
                 {payments.map((p) => (
                   <tr key={p.id} className="hover:bg-kat-verylight/60">
-                    <td className="py-3.5 px-4 font-mono font-bold text-kat-navy">{p.payment_id || 'Pending'}</td>
+                    <td className="py-3.5 px-4">
+                      <span className={`px-2.5 py-1 rounded-lg text-[10px] font-extrabold uppercase ${
+                        p.payment_method === 'PhonePe'
+                          ? 'bg-purple-100 text-purple-800 border border-purple-200'
+                          : p.payment_method === 'Google Pay'
+                          ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                          : 'bg-indigo-100 text-indigo-800 border border-indigo-200'
+                      }`}>
+                        {p.payment_method || 'Razorpay'}
+                      </span>
+                    </td>
+                    <td className="py-3.5 px-4 font-mono font-bold text-kat-navy">{p.payment_id || p.signature || 'Verification Pending'}</td>
                     <td className="py-3.5 px-4 font-mono text-kat-muted">{p.order_id}</td>
                     <td className="py-3.5 px-4 font-mono font-bold text-kat-primary">{p.quote_id}</td>
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-kat-navy">{p.customer_name || 'N/A'}</div>
+                      <div className="text-[10px] text-kat-muted">{p.customer_phone || p.customer_email || ''}</div>
+                    </td>
                     <td className="py-3.5 px-4 font-black text-kat-navy">₹{p.amount}</td>
                     <td className="py-3.5 px-4">
                       <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold uppercase ${
-                        p.status === 'PAID' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                        p.status === 'VERIFIED' || p.status === 'PAID'
+                          ? 'bg-emerald-100 text-emerald-800'
+                          : p.status === 'PENDING'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-slate-100 text-slate-700'
                       }`}>
                         {p.status}
                       </span>
                     </td>
                     <td className="py-3.5 px-4 text-kat-muted">
-                      {p.verified_at ? new Date(p.verified_at).toLocaleString('en-IN') : 'Unverified'}
+                      {p.verified_at ? new Date(p.verified_at).toLocaleString('en-IN') : 'Verification Pending'}
                     </td>
-                    <td className="py-3.5 px-4 text-right">
+                    <td className="py-3.5 px-4 text-right flex items-center justify-end gap-2">
+                      {(p.status === 'PENDING' || p.status === 'CREATED') && (
+                        <button
+                          onClick={() => handleApprovePayment(p.quote_id)}
+                          className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[10px] transition-colors"
+                          title="Approve / Verify Payment"
+                        >
+                          Approve
+                        </button>
+                      )}
                       <button
                         onClick={() => handleDeletePayment(p.id)}
                         className="p-1.5 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 transition-colors"

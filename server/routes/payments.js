@@ -181,12 +181,119 @@ router.post('/webhook', (req, res) => {
   return res.json({ status: 'ok' });
 });
 
+// PUBLIC: Initiate PhonePe / Google Pay UPI Payment (Status: PENDING)
+router.post('/initiate-upi', (req, res) => {
+  const { quote_id, payment_method = 'PhonePe', transaction_ref = '' } = req.body;
+
+  if (!quote_id) {
+    return res.status(400).json({ error: 'Quote ID is required to initiate payment' });
+  }
+
+  const quote = db.getQuoteById(quote_id);
+  if (!quote) {
+    return res.status(404).json({ error: 'Quotation not found' });
+  }
+
+  if (quote.quoted_amount <= 0) {
+    return res.status(400).json({ error: 'This quotation has not been priced by KAT admin yet.' });
+  }
+
+  if (quote.payment_status === 'PAID') {
+    return res.status(400).json({ error: 'This quotation has already been paid and verified.' });
+  }
+
+  const upiId = process.env.VITE_KAT_UPI_ID || process.env.KAT_UPI_ID || 'katdigital@ybl';
+  const payeeName = process.env.VITE_KAT_PAYEE_NAME || process.env.KAT_PAYEE_NAME || 'KAT Digital Solutions';
+  const validMethod = ['PhonePe', 'Google Pay', 'UPI'].includes(payment_method) ? payment_method : 'PhonePe';
+
+  // Save payment record in DB with PENDING status (Not PAID until verified!)
+  const payment = db.createPayment({
+    quote_id: quote.quote_id,
+    order_id: `upi_${validMethod.toLowerCase().replace(/\s+/g, '')}_${Date.now()}`,
+    payment_id: transaction_ref ? `ref_${transaction_ref}` : null,
+    payment_method: validMethod,
+    customer_id: quote.customer_id,
+    customer_name: quote.customer_name,
+    customer_email: quote.customer_email,
+    customer_phone: quote.customer_phone,
+    service_name: quote.service_name,
+    amount: quote.quoted_amount,
+    currency: 'INR',
+    status: 'PENDING', // Verification Pending
+    signature: transaction_ref || null,
+  });
+
+  db.updateQuote(quote.quote_id, {
+    status: 'PAYMENT PENDING',
+    payment_status: 'PENDING',
+  });
+
+  db.addAdminNote(quote.quote_id, `UPI payment initiated via ${validMethod}. Verification pending.`, 'System');
+
+  return res.json({
+    success: true,
+    message: `Payment initiated via ${validMethod}. Verification pending.`,
+    quote_id: quote.quote_id,
+    payment_method: validMethod,
+    status: 'PENDING',
+    upi_id: upiId,
+    payee_name: payeeName,
+    amount: quote.quoted_amount,
+    service_name: quote.service_name,
+    customer_name: quote.customer_name,
+  });
+});
+
 // ADMIN: Get All Payment Records
 router.get('/admin/all', authenticateAdmin, (req, res) => {
   const payments = db.getPayments();
   return res.json({
     count: payments.length,
     payments,
+  });
+});
+
+// ADMIN: Verify / Approve Pending UPI Payment
+router.post('/admin/verify-manual', authenticateAdmin, (req, res) => {
+  const { quote_id, payment_id, transaction_ref } = req.body;
+
+  if (!quote_id) {
+    return res.status(400).json({ error: 'Quote ID is required' });
+  }
+
+  const quote = db.getQuoteById(quote_id);
+  if (!quote) {
+    return res.status(404).json({ error: 'Quotation not found' });
+  }
+
+  const realPaymentId = payment_id || transaction_ref || `upi_pay_${Date.now()}`;
+
+  // Update payment status in database
+  const payment = db.getPayments().find(p => p.quote_id === quote_id);
+  if (payment) {
+    db.updatePayment(payment.order_id, {
+      payment_id: realPaymentId,
+      status: 'VERIFIED',
+      signature: transaction_ref || payment.signature || 'admin_manual_verification',
+      verified_at: new Date().toISOString(),
+    });
+  }
+
+  // Update quote status to PAID
+  const updatedQuote = db.updateQuote(quote_id, {
+    status: 'PAID',
+    payment_status: 'PAID',
+    payment_id: realPaymentId,
+  });
+
+  db.addAdminNote(quote_id, `Payment manually verified & approved by KAT Admin (ID: ${realPaymentId})`, 'Admin');
+
+  return res.json({
+    success: true,
+    message: 'Payment verified and approved successfully',
+    quote_id: updatedQuote.quote_id,
+    payment_id: realPaymentId,
+    status: 'VERIFIED',
   });
 });
 

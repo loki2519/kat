@@ -205,8 +205,9 @@ export const db = {
     const payment = {
       id: memoryDb.payments.length + 1,
       quote_id: paymentData.quote_id,
-      order_id: paymentData.order_id,
+      order_id: paymentData.order_id || null,
       payment_id: paymentData.payment_id || null,
+      payment_method: paymentData.payment_method || 'Razorpay',
       customer_id: paymentData.customer_id || null,
       customer_name: paymentData.customer_name || '',
       customer_email: paymentData.customer_email || '',
