@@ -48,6 +48,12 @@ router.put('/:id', authenticateAdmin, (req, res) => {
   return res.json({ success: true, news: updated });
 });
 
+// ADMIN: Delete ALL news items — MUST come before /:id to avoid param capture
+router.delete('/all/clear', authenticateAdmin, (req, res) => {
+  db.deleteAllNews();
+  return res.json({ success: true, message: 'All news items deleted.' });
+});
+
 // ADMIN: Delete single news item
 router.delete('/:id', authenticateAdmin, (req, res) => {
   const { id } = req.params;
@@ -57,12 +63,6 @@ router.delete('/:id', authenticateAdmin, (req, res) => {
   }
 
   return res.json({ success: true, message: 'News item deleted.' });
-});
-
-// ADMIN: Delete ALL news items
-router.delete('/all/clear', authenticateAdmin, (req, res) => {
-  db.deleteAllNews();
-  return res.json({ success: true, message: 'All news items deleted.' });
 });
 
 export default router;
